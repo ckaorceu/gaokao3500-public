@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>站长后台 · 高考3500词</title>
+<link rel="stylesheet" href="style.css?v=12">
+</head>
+<body>
+<header class="topbar">
+  <a class="back" href="index.html">← 返回</a>
+  <div class="brand">🛠️ 站长后台</div>
+  <div class="stats" id="adminName"></div>
+  <div id="auth-mount"></div>
+</header>
+
+<!-- 全局轻提示 -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<main class="admin-wrap">
+  <!-- 无权限 / 未登录 提示 -->
+  <section id="gate" class="gate"></section>
+
+  <!-- 后台主体（管理员登录后显示） -->
+  <section id="adminPanel" style="display:none">
+    <nav class="admin-tabs">
+      <button class="admin-tab active" data-tab="dash">📊 数据看板</button>
+      <button class="admin-tab" data-tab="users">👥 用户管理</button>
+      <button class="admin-tab" data-tab="content">✏️ 内容管理</button>
+    </nav>
+
+    <!-- 数据看板 -->
+    <div id="tabDash" class="admin-tab-body">
+      <div class="cards" id="dashCards"></div>
+      <div class="panel">
+        <h3>掌握度分布（全站学习进度按等级聚合）</h3>
+        <div id="dashMastery" class="chart"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <h3>每日活跃用户（DAU / 近 7 日 WAU）</h3>
+          <span class="legend"><i class="lg dau"></i>DAU <i class="lg wau"></i>WAU</span>
+        </div>
+        <div id="dashActive" class="active-chart"></div>
+      </div>
+      <div class="panel">
+        <h3>学习量分布（按用户已学词条数分桶）</h3>
+        <div id="dashEngage" class="chart"></div>
+      </div>
+      <div class="panel">
+        <h3>薄弱词 Top（进度等级 ≤ 2 的条目最多的单词）</h3>
+        <div id="dashStruggle" class="struggle-list"></div>
+      </div>
+    </div>
+
+    <!-- 用户管理 -->
+    <div id="tabUsers" class="admin-tab-body" style="display:none">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>注册用户</h3>
+          <div class="filters" style="margin:0">
+            <input id="userSearch" type="search" placeholder="搜索邮箱 / 用户名…" style="min-width:200px">
+            <button class="auth-btn" id="userExport">导出 CSV</button>
+          </div>
+        </div>
+        <div class="pager" style="margin-bottom:10px">
+          <button class="auth-btn" id="userPrev">上一页</button>
+          <span id="userPageInfo"></span>
+          <button class="auth-btn" id="userNext">下一页</button>
+        </div>
+        <div class="table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr><th>邮箱</th><th>用户名</th><th>注册时间</th><th>最近登录</th><th>角色</th><th>操作</th></tr>
+            </thead>
+            <tbody id="userTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 内容管理 -->
+    <div id="tabContent" class="admin-tab-body" style="display:none">
+      <div class="panel">
+        <h3>编辑单词（覆盖原始词库，全站立即生效）</h3>
+        <div class="filters" style="margin-bottom:12px">
+          <input id="wordSearch" type="search" class="word-search" placeholder="搜索单词或释义…" style="margin:0;flex:1">
+          <label class="chk"><input type="checkbox" id="onlyOverrides"> 只看覆盖词</label>
+          <button class="auth-btn" id="exportJson">导出 JSON</button>
+          <button class="auth-btn" id="exportCsv">导出 CSV</button>
+        </div>
+        <div id="wordListBox" class="word-picks"></div>
+
+        <div id="wordEditor" class="word-editor" style="display:none">
+          <div class="ed-title">编辑：<b id="edWord"></b></div>
+          <div class="ed-grid">
+            <label>词性 <input id="edPos"></label>
+            <label>美音 <input id="edUsphone" placeholder="美式音标，如 ˈæp.əl"></label>
+            <label>英音 <input id="edUkphone" placeholder="英式音标，如 ˈæp.əl"></label>
+            <label class="full">释义 <input id="edMeaning"></label>
+            <label class="full">联想记忆 <input id="edAssoc"></label>
+            <label class="full">词根词缀 <input id="edRoot"></label>
+            <label class="full">谐音记忆 <input id="edHomo"></label>
+            <label class="full">例句 <input id="edEx"></label>
+          </div>
+          <div class="auth-msg" id="edMsg"></div>
+          <div class="dlg-actions">
+            <button class="ghost" id="edRestore">恢复原始</button>
+            <button class="primary" id="edSave">保存覆盖</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script defer src="words.js" charset="utf-8"></script>
+<script defer src="config.js" charset="utf-8"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script defer src="sync.js?v=5" charset="utf-8"></script>
+<script defer src="admin.js?v=4" charset="utf-8"></script>
+</body>
+</html>
