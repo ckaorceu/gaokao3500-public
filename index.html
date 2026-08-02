@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>高考英语3500词 · 巧记</title>
+<meta name="theme-color" content="#2f6bff">
+<meta name="description" content="高考英语 3500 词巧记：真人发音、艾宾浩斯遗忘曲线间隔复习、错词本与连续打卡。">
+<link rel="preconnect" href="https://bkuvirojzuetweondgrx.supabase.co">
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="dns-prefetch" href="https://dict.youdao.com">
+<link rel="stylesheet" href="style.css?v=14">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">📚 高考3500词</div>
+  <span id="streak" class="streak-badge"></span>
+  <div class="stats" id="stats"></div>
+  <div class="accent-toggle" id="accentToggle" title="选择发音（美音 / 英音）">
+    <button type="button" data-accent="us">美</button>
+    <button type="button" data-accent="uk">英</button>
+  </div>
+  <div id="auth-mount"></div>
+</header>
+
+<main class="container">
+
+  <section class="hero">
+    <h1>高考英语 · 3500词巧记</h1>
+    <p class="subtitle">基于艾宾浩斯遗忘曲线，5级间隔复习 · 全部 3893 词条</p>
+  </section>
+
+  <section class="quick">
+    <a class="quick-card" href="learn.html?mode=meaning&drill=wrong">
+      <span class="qc-icon">🔴</span>
+      <span class="qc-text">错词本 <b id="wrongCount">0</b></span>
+    </a>
+    <a class="quick-card" href="learn.html?mode=meaning&drill=weak">
+      <span class="qc-icon">📚</span>
+      <span class="qc-text">未掌握词</span>
+    </a>
+  </section>
+
+  <section class="progress-block">
+    <div class="progress-row">
+      <span class="label">总进度</span>
+      <div class="bar"><div id="bar-total" class="bar-fill"></div></div>
+      <span id="pct-total" class="pct">0%</span>
+    </div>
+    <div class="block-label">复习等级分布</div>
+    <div class="levels" id="levels"></div>
+  </section>
+
+  <section class="mode-picker">
+    <div class="block-label">练习模式（进入单词前选择）</div>
+    <div class="mode-picker-chips" id="modePicker"></div>
+    <div class="order-row">
+      <span class="block-label" style="margin:0">单词顺序</span>
+      <div class="order-chips" id="orderChips">
+        <div class="order-chip active" data-order="seq">顺序</div>
+        <div class="order-chip" data-order="shuffle">乱序</div>
+      </div>
+    </div>
+    <button class="start-btn" id="startBtn">▶ 开始练习</button>
+    <div class="drill-row">
+      <span class="block-label" style="margin:0">练习范围</span>
+      <div class="order-chips" id="drillChips">
+        <div class="drill-chip active" data-drill="all">全部</div>
+        <div class="drill-chip" data-drill="weak">只练未掌握</div>
+      </div>
+    </div>
+    <div class="drill-row">
+      <span class="block-label" style="margin:0">重复记忆（评“不会/模糊”自动重练）</span>
+      <div class="order-chips" id="repeatChips">
+        <div class="drill-chip active" data-repeat="off">关</div>
+        <div class="drill-chip" data-repeat="on">开</div>
+      </div>
+    </div>
+    <div class="drill-row" id="repeatMaxRow" style="display:none">
+      <span class="block-label" style="margin:0">重复次数上限</span>
+      <div class="order-chips" id="repeatMaxChips">
+        <div class="drill-chip" data-max="1">1次</div>
+        <div class="drill-chip" data-max="2">2次</div>
+        <div class="drill-chip active" data-max="3">3次</div>
+        <div class="drill-chip" data-max="5">5次</div>
+        <div class="drill-chip" data-max="-1">∞</div>
+      </div>
+    </div>
+    <div class="due-note">今日待复习合计：<b id="dueTotal">0</b></div>
+  </section>
+
+  <section class="letter-nav" id="letterNav"></section>
+
+  <section class="filters">
+    <input id="search" type="search" placeholder="搜索单词或释义…">
+    <select id="filter">
+      <option value="all">全部</option>
+      <option value="new">未学</option>
+      <option value="l1">L1</option>
+      <option value="l2">L2</option>
+      <option value="l3">L3</option>
+      <option value="l4">L4</option>
+      <option value="l5">L5</option>
+    </select>
+    <button id="reset" class="ghost">重置进度</button>
+  </section>
+
+  <section class="word-list" id="wordList"></section>
+</main>
+
+<script defer src="words.js" charset="utf-8"></script>
+<script defer src="config.js" charset="utf-8"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script defer src="sync.js?v=7" charset="utf-8"></script>
+<script defer src="app.js?v=21" charset="utf-8"></script>
+</body>
+</html>
