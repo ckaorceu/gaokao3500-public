@@ -1,0 +1,15 @@
+# 只部署网站运行时文件，其余（开发脚本/调试产物/工作区配置）不上传
+*
+!.gitignore
+!index.html
+!learn.html
+!reset.html
+!style.css
+!words.js
+!app.js
+!learn.js
+!sync.js
+!config.js
+!admin.html
+!admin.js
+!.vercelignore
