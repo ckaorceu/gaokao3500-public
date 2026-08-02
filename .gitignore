@@ -1,0 +1,21 @@
+# 只部署网站静态文件，排除所有开发/调试产物
+*
+!.gitignore
+!index.html
+!learn.html
+!reset.html
+!style.css
+!words.js
+!app.js
+!learn.js
+!config.js
+!sync.js
+!supabase_schema.sql
+!supabase_profiles.sql
+!supabase_admin.sql
+!admin.html
+!admin.js
+!SUPABASE_SETUP.md
+
+.vercel
+.env*
