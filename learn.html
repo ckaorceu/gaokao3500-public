@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>学习 · 高考3500词</title>
+<meta name="theme-color" content="#2f6bff">
+<meta name="description" content="高考英语 3500 词巧记学习页：真人发音、闪卡、巧记与遗忘曲线复习。">
+<link rel="preconnect" href="https://bkuvirojzuetweondgrx.supabase.co">
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="dns-prefetch" href="https://dict.youdao.com">
+<link rel="stylesheet" href="style.css?v=19">
+</head>
+<body>
+<header class="topbar">
+  <a class="back" href="index.html">← 返回</a>
+  <div class="brand">📚 巧记学习</div>
+  <span id="streak" class="streak-badge"></span>
+  <div class="stats" id="counter"></div>
+  <div class="accent-toggle" id="accentToggle" title="选择发音（美音 / 英音）">
+    <button type="button" data-accent="us">美</button>
+    <button type="button" data-accent="uk">英</button>
+  </div>
+  <div id="auth-mount"></div>
+</header>
+
+<main class="learn-wrap">
+  <div class="learn-meta">
+    <span id="modeLabel" class="mode-label"></span>
+    <span id="posIndicator"></span>
+    <span id="learnStats"></span>
+  </div>
+
+  <section class="flashcard" id="flashcard"></section>
+
+  <div class="actions" id="actions"></div>
+
+  <section class="trick-panel">
+    <div class="trick-head">
+      <span>💡 巧记方法</span>
+      <button class="link-btn" onclick="openTrick()">编辑</button>
+    </div>
+    <div class="trick-body" id="trickBody"></div>
+  </section>
+</main>
+
+<dialog id="trickDlg">
+  <form method="dialog" class="trick-form" onsubmit="return false">
+    <h3>编辑巧记 — <span id="trickWordName"></span></h3>
+    <label class="tf"><span>联想记忆</span><input id="trickAssoc" placeholder="abandon = a(一个)+band(乐队)+on(上) → 一个乐队在演出时被抛弃"></label>
+    <label class="tf"><span>词根词缀</span><input id="trickRoot" placeholder="un- 否定；-able 能…的；bio- 生命"></label>
+    <label class="tf"><span>谐音记忆</span><input id="trickHomo" placeholder="ambulance 谐音「俺不能死」→ 救护车"></label>
+    <label class="tf"><span>例句</span><input id="trickEx" placeholder="He abandoned his car in the snow. 他把车丢在雪里。"></label>
+    <div class="dlg-actions">
+      <button type="button" class="ghost" onclick="closeTrick()">取消</button>
+      <button type="button" class="primary" onclick="saveTrick()">保存</button>
+    </div>
+  </form>
+</dialog>
+
+<script defer src="words.js" charset="utf-8"></script>
+<script defer src="config.js" charset="utf-8"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script defer src="sync.js?v=14" charset="utf-8"></script>
+<script defer src="learn.js?v=21" charset="utf-8"></script>
+</body>
+</html>
