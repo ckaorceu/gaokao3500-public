@@ -135,6 +135,17 @@
   }
   function cfReset(action) { try { if (window.turnstile && _cfWidgets[action] != null) window.turnstile.reset(_cfWidgets[action]); } catch (e) {} }
 
+  // 管理员登录豁免人机验证：命中白名单（邮箱/用户名，大小写不敏感、trim）即跳过 Turnstile。
+  function isAdminBypass(identifier) {
+    var list = window.ADMIN_BYPASS_CAPTCHA || [];
+    if (!list.length) return false;
+    var id = (identifier || '').trim().toLowerCase();
+    for (var i = 0; i < list.length; i++) {
+      if ((list[i] || '').trim().toLowerCase() === id) return true;
+    }
+    return false;
+  }
+
   // 验证码（注册/找回密码/改邮箱）现在直接走 Supabase 官方 SDK，
   // Turnstile token 通过 options.captchaToken 上送，由 Supabase 服务端校验，无需自建 Worker。
 
@@ -578,7 +589,16 @@
     var forgot = document.getElementById('authForgot');
     if (forgot) forgot.onclick = function (e) { e.preventDefault(); showReset(); };
     var idEl = document.getElementById('authId');
-    if (idEl) idEl.focus();
+    if (idEl) {
+      idEl.focus();
+      // 管理员白名单命中时隐藏人机验证控件（动态）
+      idEl.addEventListener('input', function () {
+        var wrap = document.querySelector('#authOverlay .cf-wrap');
+        if (wrap) wrap.style.display = isAdminBypass(idEl.value) ? 'none' : '';
+      });
+      var wrap0 = document.querySelector('#authOverlay .cf-wrap');
+      if (wrap0) wrap0.style.display = isAdminBypass(idEl.value) ? 'none' : '';
+    }
     cfRender('login');
   }
 
@@ -611,9 +631,9 @@
     var msg = document.getElementById('authMsg');
     if (!id || !pw) { msg.className = 'auth-msg err'; msg.textContent = '请填写账号和密码'; return; }
     if (pw.length < 6) { msg.className = 'auth-msg err'; msg.textContent = '密码至少 6 位'; return; }
-    if (cfKeyReal() && !cfToken('login')) { msg.className = 'auth-msg err'; msg.textContent = '请先完成人机验证'; return; }
+    if (cfKeyReal() && !isAdminBypass(id) && !cfToken('login')) { msg.className = 'auth-msg err'; msg.textContent = '请先完成人机验证'; return; }
     msg.className = 'auth-msg'; msg.textContent = '处理中…';
-    signIn(id, pw, cfToken('login')).then(function () {
+    signIn(id, pw, isAdminBypass(id) ? '' : cfToken('login')).then(function () {
       cfReset('login');
       msg.className = 'auth-msg ok';
       msg.textContent = '成功，正在同步…';

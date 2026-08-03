@@ -11,3 +11,7 @@ window.APP_CONFIG = {
 // 已接入真实 Site Key；Secret Key 配置在 Supabase 后台（Auth → Providers → CAPTCHA），
 // 由 Supabase 服务端校验，前端只传 Turnstile token，无需自建 Worker。
 window.CF_TURNSTILE_SITEKEY = '0x4AAAAAAEEPzgDpkGl6Id-l';
+
+// 管理员登录豁免人机验证：白名单内账号（邮箱/用户名，大小写不敏感）登录时跳过 Turnstile。
+// 前置条件：需在 Supabase 后台关闭「全局 captcha 强制」(security_captcha_enabled=false) 此豁免才真正生效。
+window.ADMIN_BYPASS_CAPTCHA = ['2997443486@qq.com'];
