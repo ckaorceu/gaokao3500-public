@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://bkuvirojzuetweondgrx.supabase.co">
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="dns-prefetch" href="https://dict.youdao.com">
-<link rel="stylesheet" href="style.css?v=22">
+<link rel="stylesheet" href="style.css?v=25">
 </head>
 <body>
 <header class="topbar">
@@ -35,10 +35,10 @@
 
   <div class="actions" id="actions"></div>
 
-  <section class="trick-panel">
+  <section class="trick-panel" id="trickPanel">
     <div class="trick-head">
       <span>💡 巧记方法</span>
-      <button class="link-btn" onclick="showCurve()">📈 曲线</button>
+      <button class="link-btn" id="curveBtn" onclick="showCurve()">📈 曲线</button>
       <button class="link-btn" onclick="openTrick()">编辑</button>
     </div>
     <div class="trick-body" id="trickBody"></div>
@@ -61,7 +61,7 @@
 
 <dialog id="curveDlg">
   <div class="curve-form">
-    <h3><img class="bh-icon" src="icons/icon-forgetting-curve.svg" alt=""> 记忆曲线 — <span id="curveWord"></span></h3>
+    <h3><img class="bh-icon" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiID8+PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB3aWR0aD0iNjQiIGhlaWdodD0iNjQiPjxwYXRoIGZpbGw9IiM0RjQ2RTUiIHRyYW5zZm9ybT0ibWF0cml4KDEgMCAwIDEgMTAuNjY2NyAxMC42NjY3KSIgZD0iTTAuOSA0MS43NjY3TDAuOSAwUTAuOTEwOSAtMC4zNzczIDAuNjM2NCAtMC42MzY0UTAuMzc3MyAtMC45MTA5IDAgLTAuOVEtMC4zNzczIC0wLjkxMDkgLTAuNjM2NCAtMC42MzY0US0wLjkxMDkgLTAuMzc3MyAtMC45IDBMLTAuOSA0Mi42NjY3US0wLjkxMDkgNDMuMDQ0IC0wLjYzNjQgNDMuMzAzMVEtMC4zNzczIDQzLjU3NzUgMCA0My41NjY3TDQyLjY2NjcgNDMuNTY2N1E0My4wNDQgNDMuNTc3NSA0My4zMDMxIDQzLjMwMzFRNDMuNTc3NSA0My4wNDQgNDMuNTY2NyA0Mi42NjY3UTQzLjU3NzUgNDIuMjg5NCA0My4zMDMxIDQyLjAzMDNRNDMuMDQ0IDQxLjc1NTggNDIuNjY2NyA0MS43NjY3TDAuOSA0MS43NjY3WiIgZmlsbC1ydWxlPSJldmVub2RkIi8+PHBhdGggZmlsbD0iIzRGNDZFNSIgdHJhbnNmb3JtPSJtYXRyaXgoMSAwIDAgMSAxMC42NjY3IDE2KSIgZD0iTTguNTE0NyAxMi42NzI0UTQuOTEyMSA3LjgxMTggMC44MDUgLTAuNDAyNVEwLjY0NiAtMC43NDQ4IDAuMjg0NiAtMC44NTM4US0wLjA2OTkgLTAuOTgzNCAtMC40MDI1IC0wLjgwNVEtMC43NDQ4IC0wLjY0NiAtMC44NTM4IC0wLjI4NDZRLTAuOTgzNCAwLjA2OTkgLTAuODA1IDAuNDAyNVEzLjM3MjQgOC43NTczIDcuMDY4NiAxMy43NDQyUTExLjA4OTYgMTkuMTY5MyAxNS44MjUxIDIyLjQwOTVRMjAuNTQwNCAyNS42MzU3IDI3LjEzMTEgMjcuNDkxM1EzMy4xMjM3IDI5LjE3ODUgNDIuNTY3MyAzMC4yMjc4UTQyLjk0MTEgMzAuMjgwMyA0My4yMjg5IDMwLjAzNjFRNDMuNTMwMyAyOS44MDg5IDQzLjU2MTIgMjkuNDMyN1E0My42MTM2IDI5LjA1ODkgNDMuMzY5NCAyOC43NzExUTQzLjE0MjIgMjguNDY5NyA0Mi43NjYxIDI4LjQzODhRMzMuNDY5MyAyNy40MDU5IDI3LjYxODkgMjUuNzU4N1EyMS4zMTI5IDIzLjk4MzIgMTYuODQxNiAyMC45MjM5UTEyLjM1NTYgMTcuODU0NSA4LjUxNDcgMTIuNjcyNFoiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjxlbGxpcHNlIGZpbGw9IiNGNTlFMEIiIHRyYW5zZm9ybT0ibWF0cml4KDEgMCAwIDEgNi4xMzMzMyAxMS40NjY3KSIgY3g9IjQuNTMzMyIgY3k9IjQuNTMzMyIgcng9IjQuNTMzMyIgcnk9IjQuNTMzMyIvPjxjaXJjbGUgZmlsbD0iI0Y1OUUwQiIgdHJhbnNmb3JtPSJtYXRyaXgoMSAwIDAgMSA0OC44IDQwLjgpIiBjeD0iNC41MzMzIiBjeT0iNC41MzMzIiByPSI0LjUzMzMiLz48L3N2Zz4=" alt=""> 记忆曲线 — <span id="curveWord"></span></h3>
     <div id="curveBody"></div>
     <div class="dlg-actions">
       <button type="button" class="primary" onclick="closeCurve()">关闭</button>
@@ -70,9 +70,9 @@
 </dialog>
 
 <script defer src="words.js" charset="utf-8"></script>
-<script defer src="config.js?v=3" charset="utf-8"></script>
+<script defer src="config.js?v=4" charset="utf-8"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script defer src="sync.js?v=18" charset="utf-8"></script>
-<script defer src="learn.js?v=24" charset="utf-8"></script>
+<script defer src="sync.js?v=21" charset="utf-8"></script>
+<script defer src="learn.js?v=30" charset="utf-8"></script>
 </body>
 </html>

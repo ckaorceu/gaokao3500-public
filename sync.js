@@ -23,6 +23,8 @@
   var studyDates = (typeof Set !== 'undefined') ? new Set() : {}; // 学习过的本地日期集合 'yyyy-mm-dd'
   var saveTimerSR = null;
   var saveTimerTricks = null;
+  var pendingSR = null;       // 待落云的最后一个 SR 对象（pagehide 时兜底刷新）
+  var pendingTricks = null;   // 待落云的最后一个 tricks 对象
 
   // ---------- 配置读取 ----------
   function config() {
@@ -158,13 +160,13 @@
   // 开关默认「开」（undefined 视为开），只有显式 false 才关
   function flagOn(key) { return !_flags || _flags[key] !== false; }
   // 全局是否应展示人机验证（受全局开关 + sitekey 真实性双重控制）
-  function shouldShowCaptcha() { return cfKeyReal() && flagOn('captcha_enabled'); }
+  function shouldShowCaptcha() { return cfKeyReal() && flagOn('security.captcha_enabled'); }
 
   // 管理员登录豁免：开关开 + 该账号确为管理员（按邮箱/用户名实时判定，覆盖所有管理员）
   function isAdminBypass(identifier) {
     var k = (identifier || '').trim().toLowerCase();
     if (!k) return false;
-    if (flagOn('admin_bypass_captcha') === false) return false;   // 开关关：不豁免
+    if (flagOn('security.admin_bypass_captcha') === false) return false;   // 开关关：不豁免
     if (whitelistHit(k)) return true;                             // 兜底白名单（RPC 不可用时）
     if (_adminByIdent[k] === true) return true;                   // 已确认是管理员
     checkAdminIdent(k);                                           // 未知则异步查（先按非管理员处理）
@@ -396,6 +398,7 @@
   // 立即镜像到本地 + 防抖同步云端
   function saveSR(srObj) {
     localSet(SR_KEY, srObj);
+    pendingSR = srObj;
     // 打卡：记录今天已学习并通知 UI 实时更新
     studyDates.add(localDateStr(new Date()));
     persistStudyDates();
@@ -407,6 +410,17 @@
       // 记录今日打卡（支撑后台「连续打卡榜」）；忽略错误，不阻塞主流程
       if (user && sb) { rpc('log_study', { p_cnt: 1 }).catch(function () {}); }
     }, SAVE_DEBOUNCE);
+  }
+
+  // 实时落云（SR）：绕过防抖，立即把当前进度推送到 Supabase
+  function saveSRNow(srObj) {
+    localSet(SR_KEY, srObj);
+    studyDates.add(localDateStr(new Date()));
+    persistStudyDates();
+    emitStudy();
+    if (!cloudEnabled()) return Promise.resolve();
+    clearTimeout(saveTimerSR);
+    return _saveSR(srObj).catch(function (e) { console.error('[Sync] saveSRNow 失败', e); });
   }
 
   // 整体 upsert 已学条目，并删除本地已不存在的行（如评级<=0被删除）
@@ -443,11 +457,28 @@
 
   function saveTricks(tricksObj) {
     localSet(TRICK_KEY, tricksObj);
+    pendingTricks = tricksObj;
     if (!cloudEnabled()) return;
     clearTimeout(saveTimerTricks);
     saveTimerTricks = setTimeout(function () {
       _saveTricks(tricksObj).catch(function (e) { console.error('[Sync] saveTricks 失败', e); });
     }, SAVE_DEBOUNCE);
+  }
+
+  // 实时落云（tricks）：绕过防抖，立即把标记/巧记/曲线历史推送到 Supabase（关页面也不丢）
+  function saveTricksNow(tricksObj) {
+    localSet(TRICK_KEY, tricksObj);
+    pendingTricks = tricksObj;
+    if (!cloudEnabled()) return Promise.resolve();
+    clearTimeout(saveTimerTricks);
+    return _saveTricks(tricksObj).catch(function (e) { console.error('[Sync] saveTricksNow 失败', e); });
+  }
+
+  // 兜底：把尚未落云的防抖数据立即推送（页面隐藏/关闭时调用，避免丢云同步）
+  function flush() {
+    if (!cloudEnabled()) return;
+    if (saveTimerSR) { clearTimeout(saveTimerSR); saveTimerSR = null; if (pendingSR) _saveSR(pendingSR).catch(function () {}); }
+    if (saveTimerTricks) { clearTimeout(saveTimerTricks); saveTimerTricks = null; if (pendingTricks) _saveTricks(pendingTricks).catch(function () {}); }
   }
 
   function _saveTricks(tricksObj) {
@@ -1075,14 +1106,23 @@
   }
 
   // ---------- 暴露接口 & 自启动 ----------
+  // 页面隐藏/关闭时兜底刷新未完成的上云，避免数据丢失
+  if (typeof window !== 'undefined') {
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') flush(); });
+  }
+
   window.Sync = {
     init: init, onAuth: onAuth, signUp: signUp, verifyOtp: verifyOtp, signIn: signIn,
     signOut: signOut, currentUser: currentUser, loadAll: loadAll,
-    saveSR: saveSR, saveTricks: saveTricks, resetAll: resetAll,
+    saveSR: saveSR, saveTricks: saveTricks, saveSRNow: saveSRNow, saveTricksNow: saveTricksNow, flush: flush,
+    resetAll: resetAll,
     changePassword: changePassword, usernameAvailable: usernameAvailable,
     amIAdmin: amIAdmin, loadWordOverrides: loadWordOverrides, listWordOverrides: listWordOverrides, applyWordOverrides: applyWordOverrides,
     rpc: rpc, getWordOverride: getWordOverride, saveWordOverride: saveWordOverride, deleteWordOverride: deleteWordOverride,
-    onStudy: onStudy, streak: computeStreak
+    onStudy: onStudy, streak: computeStreak,
+    // 后台「功能开关」读取接口（feature_flags 表，由后台「🎛️ 运营」管理）
+    flagOn: flagOn, ensureFlags: ensureFlags
   };
 
   if (document.readyState === 'loading') {

@@ -13,6 +13,6 @@ window.APP_CONFIG = {
 window.CF_TURNSTILE_SITEKEY = '0x4AAAAAAEEPzgDpkGl6Id-l';
 
 // 管理员登录豁免人机验证（兜底白名单）：命中即跳过 Turnstile。
-// 主判定已改为「后台 feature_flags 的 admin_bypass_captcha 开关 + 账号确为管理员(is_admin_login)」，
-// 覆盖所有管理员；此白名单仅作 RPC 不可用时的兜底。前置：Supabase 后台 security_captcha_enabled=false 才生效。
+// 主判定已改为「后台 feature_flags 的 security.admin_bypass_captcha 开关 + 账号确为管理员(is_admin_login)」，
+// 覆盖所有管理员；此白名单仅作 RPC 不可用时的兜底。前置：Supabase 后台 security.captcha_enabled=false 才生效。
 window.ADMIN_BYPASS_CAPTCHA = ['2997443486@qq.com'];
