@@ -365,18 +365,31 @@
         return sr;
       });
   }
+  // 把数据库行映射为前端 tricks 对象（含可选的 flag / h 历史字段）
+  function mapTricks(rows) {
+    var t = {};
+    (rows || []).forEach(function (row) {
+      t[row.word] = {
+        assoc: row.assoc || '', root: row.root || '',
+        homo: row.homo || '', ex: row.ex || '', flag: row.flag || null,
+        h: (row.h || [])
+      };
+    });
+    return t;
+  }
   function fetchTricks() {
-    return sb.from('tricks').select('word,assoc,root,homo,ex').eq('user_id', user.id)
+    // 优先尝试含 flag/h 的新结构；若列尚未迁移（未运行 ALTER），自动回退到旧结构，保证巧记不中断
+    return sb.from('tricks').select('word,assoc,root,homo,ex,flag,h').eq('user_id', user.id)
       .then(function (r) {
         if (r.error) throw r.error;
-        var t = {};
-        (r.data || []).forEach(function (row) {
-          t[row.word] = {
-            assoc: row.assoc || '', root: row.root || '',
-            homo: row.homo || '', ex: row.ex || ''
-          };
-        });
-        return t;
+        return mapTricks(r.data || []);
+      })
+      .catch(function () {
+        return sb.from('tricks').select('word,assoc,root,homo,ex').eq('user_id', user.id)
+          .then(function (r2) {
+            if (r2.error) return {};
+            return mapTricks(r2.data || []);
+          });
       });
   }
 
@@ -446,8 +459,10 @@
       var root = (t.root || '').trim();
       var homo = (t.homo || '').trim();
       var ex = (t.ex || '').trim();
-      if (assoc || root || homo || ex) {
-        present.push({ user_id: user.id, word: w, assoc: assoc, root: root, homo: homo, ex: ex });
+      var flag = (t.flag || '').trim();
+      var h = (t.h && t.h.length) ? t.h : null;
+      if (assoc || root || homo || ex || flag || h) {
+        present.push({ user_id: user.id, word: w, assoc: assoc, root: root, homo: homo, ex: ex, flag: flag || null, h: h });
       }
     }
     var upsertP = present.length

@@ -50,6 +50,8 @@ let selectedOrder = 'seq';
 let selectedDrill = 'all';
 let selectedRepeat = 'off';
 let selectedRepeatMax = 3;
+let listMode = 'all';     // all | hard（重难词本）
+let sortMode = 'default'; // default | shuffle | rate | reviews
 // 单词列表按需加载：默认不渲染，点击「列出单词」后分页展示
 const LIST_PAGE_SIZE = 60;
 let listShown = false;
@@ -130,20 +132,60 @@ function renderModePicker() {
 }
 
 function filteredItems() {
-  let items = WORDS;
-  if (activeLetter !== 'all') {
-    items = items.filter(w => (w.name[0] || '').toLowerCase() === activeLetter);
-  }
-  if (filterMode !== 'all') {
-    if (filterMode === 'new') items = items.filter(w => bestLevel(w.name) === 0);
-    else if (filterMode.startsWith('l')) {
-      const lv = parseInt(filterMode.slice(1));
-      items = items.filter(w => Math.min(bestLevel(w.name), 4) === lv);
+  let items;
+  if (listMode === 'hard') {
+    items = WORDS.filter(w => { const t = tricks[w.name]; return t && t.flag === 'hard'; });
+  } else {
+    items = WORDS;
+    if (activeLetter !== 'all') {
+      items = items.filter(w => (w.name[0] || '').toLowerCase() === activeLetter);
+    }
+    if (filterMode !== 'all') {
+      if (filterMode === 'new') items = items.filter(w => bestLevel(w.name) === 0);
+      else if (filterMode.startsWith('l')) {
+        const lv = parseInt(filterMode.slice(1));
+        items = items.filter(w => Math.min(bestLevel(w.name), 4) === lv);
+      }
     }
   }
   const kw = searchText.trim().toLowerCase();
   if (kw) items = items.filter(w => w.name.toLowerCase().includes(kw) || (w.meaning || '').toLowerCase().includes(kw));
+  items = sortItems(items);
   return items;
+}
+
+// 复习次数（跨模式已学次数 + 记忆历史条数）
+function reviewCount(name) {
+  let n = 0;
+  for (const k in SR) { if (SR[k] && SR[k][name]) n++; }
+  const t = tricks[name];
+  if (t && t.h) n += t.h.length;
+  return n;
+}
+function aShuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function sortItems(items) {
+  if (sortMode === 'shuffle') return aShuffle(items);
+  if (sortMode === 'rate') return items.slice().sort((a, b) => bestLevel(a.name) - bestLevel(b.name)); // 记忆率低→高
+  if (sortMode === 'reviews') return items.slice().sort((a, b) => reviewCount(b.name) - reviewCount(a.name)); // 复习多→少
+  return items;
+}
+function toggleHard() {
+  listMode = (listMode === 'hard') ? 'all' : 'hard';
+  listShown = true; listPage = 0;
+  renderList();
+}
+// 重难词本：跨模式标记为重难词的词数
+function hardCount() {
+  var c = 0;
+  WORDS.forEach(function (w) { var t = tricks[w.name]; if (t && t.flag === 'hard') c++; });
+  return c;
 }
 
 function currentFilteredNames() {
@@ -191,6 +233,7 @@ function renderLetters() {
     $$('#letterNav button').forEach(b => b.classList.remove('active'));
     e.target.classList.add('active');
     activeLetter = e.target.dataset.l;
+    listMode = 'all';
     listPage = 0;
     renderList();
   });
@@ -254,6 +297,45 @@ function wrongCount() {
   WORDS.forEach(function (w) { var b = bestLevel(w.name); if (b >= 1 && b <= 2) c++; });
   return c;
 }
+
+// 词书进度（按单元）：蓝条=历史记忆率，绿条=本轮(熟记)记忆率
+function renderUnitProgress() {
+  var el = document.getElementById('unitProgress');
+  if (!el) return;
+  var SIZE = 50, units = [], total = WORDS.length;
+  for (var i = 0; i < total; i += SIZE) {
+    var chunk = WORDS.slice(i, i + SIZE), learned = 0, mastered = 0;
+    chunk.forEach(function (w) { var b = bestLevel(w.name); if (b > 0) learned++; if (b >= 4) mastered++; });
+    units.push({ i: i, n: chunk.length, learned: learned, mastered: mastered,
+      hist: chunk.length ? learned / chunk.length * 100 : 0,
+      cur: chunk.length ? mastered / chunk.length * 100 : 0 });
+  }
+  el.innerHTML = units.map(function (u) {
+    var idx = Math.floor(u.i / SIZE) + 1;
+    var end = Math.min(u.i + SIZE, total) - 1;
+    return '<div class="unit-row" onclick="startUnit(' + u.i + ',' + end + ')">' +
+      '<div class="unit-name">第 ' + idx + ' 单元</div>' +
+      '<div class="unit-bars">' +
+        '<div class="ubar blue" style="width:' + u.hist.toFixed(0) + '%"></div>' +
+        '<div class="ubar green" style="width:' + u.cur.toFixed(0) + '%"></div>' +
+      '</div>' +
+      '<div class="unit-meta">' + u.learned + '/' + u.n + ' · 熟 ' + u.mastered + '</div>' +
+    '</div>';
+  }).join('');
+}
+function startUnit(from, to) {
+  var base = 'learn.html?mode=' + selectedMode + '&from=' + from + '&to=' + (to + 1);
+  if (selectedOrder === 'shuffle') base += '&order=shuffle';
+  if (selectedRepeat === 'on') { base += '&repeat=on'; if (selectedRepeatMax > 0) base += '&rmax=' + selectedRepeatMax; }
+  location.href = base;
+}
+function renderQuote() {
+  var el = document.getElementById('quote');
+  if (!el) return;
+  if (window.QUOTES && window.QUOTES.length) {
+    el.textContent = '“' + window.QUOTES[Math.floor(Math.random() * window.QUOTES.length)] + '”';
+  }
+}
 // 顶栏连续打卡徽章（登录后显示）
 function renderStreak() {
   var el = document.getElementById('streak');
@@ -272,7 +354,14 @@ $('#search').addEventListener('input', e => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(renderList, 120);
 });
-$('#filter').addEventListener('change', e => { filterMode = e.target.value; listPage = 0; renderList(); });
+$('#filter').addEventListener('change', e => { filterMode = e.target.value; listMode = 'all'; listPage = 0; renderList(); });
+$('#sortChips').addEventListener('click', e => {
+  const chip = e.target.closest('.order-chip');
+  if (!chip) return;
+  sortMode = chip.dataset.sort;
+  $$('#sortChips .order-chip').forEach(c => c.classList.toggle('active', c.dataset.sort === sortMode));
+  renderList();
+});
 $('#reset').addEventListener('click', () => {
   if (confirm('确定清空所有学习进度和巧记？')) {
     Sync.resetAll().then(() => location.reload()).catch(() => location.reload());
@@ -291,8 +380,11 @@ function boot(d) {
     tricks = d.tricks || {};
     renderStats(); renderLetters(); renderList(); renderModePicker();
     renderStreak();
+    renderUnitProgress(); renderQuote();
     var wc = document.getElementById('wrongCount');
     if (wc) wc.textContent = wrongCount();
+    var hc = document.getElementById('hardCount');
+    if (hc) hc.textContent = hardCount();
     Sync.onStudy(renderStreak);
   });
 }

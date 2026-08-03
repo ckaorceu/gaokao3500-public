@@ -13,6 +13,8 @@ function saveSR() { Sync.saveSR(SR); }
 
 const params = new URLSearchParams(location.search);
 const startName = params.get('w');
+const rangeFrom = parseInt(params.get('from') || '', 10);  // 单元学习范围（含）
+const rangeTo = parseInt(params.get('to') || '', 10);      // 单元学习范围（不含，WORDS 索引）
 const MODE_LABELS = {
   meaning: '看词记义',
   word: '看义记词',
@@ -25,7 +27,7 @@ if (!MODE_LABELS[mode]) mode = 'meaning';
 const shuffleOrder = params.get('order') === 'shuffle';
 const weakOnly = params.get('drill') === 'weak';
 const wrongOnly = params.get('drill') === 'wrong';
-const repeatOn = params.get('repeat') === 'on';   // 重复记忆：评不会/模糊自动重练
+let repeatOn = params.get('repeat') === 'on';   // 重复记忆：评不会/模糊自动重练（运行时可按 R 切换）
 const REPEAT_MAX = parseInt(params.get('rmax') || '', 10);  // 上限；NaN 或 -1 表示无限
 const REPEAT_LIMIT_RAW = isNaN(REPEAT_MAX) || REPEAT_MAX < 0 ? Infinity : REPEAT_MAX;
 // 安全上限：防止「重复记忆 + 无限次」下队列无限膨胀（review 建议的硬上限）
@@ -35,17 +37,81 @@ const repeatCount = {};                           // name -> 本轮已重复次�
 
 function srOf(name) { return (SR[mode] && SR[mode][name]) || { l: 0, due: 0, iv: 0 }; }
 function bestLevel(name) { let m = 0; for (const k in SR) { const r = SR[k] && SR[k][name]; if (r && r.l > m) m = r.l; } return m; }
+
+// ---- 标记体系（太简单 / 重难词 / 已掌握） ----
+function flagOf(name) { const t = tricks[name]; return (t && t.flag) || null; }
+function isEasy(name) { return flagOf(name) === 'easy'; }
+function isHard(name) { return flagOf(name) === 'hard'; }
+function isMastered(name) { return flagOf(name) === 'mastered'; }
+// 切换单词标记；再次点击同一标记则取消。重难词/太简单会改变队列，故重建。
+function setFlag(name, fv) {
+  if (!tricks[name]) tricks[name] = {};
+  const cur = tricks[name].flag || null;
+  tricks[name].flag = (cur === fv) ? null : fv;
+  Sync.saveTricks(tricks);
+  queue = buildQueue();
+  if (idx >= queue.length) idx = 0;
+  show();
+}
+function renderFlagBar(name) {
+  const el = document.getElementById('flagBar');
+  if (!el) return;
+  const f = flagOf(name);
+  el.innerHTML =
+    `<button class="flag-btn${f === 'easy' ? ' on easy' : ''}" onclick="setFlag('${escapeHtml(name)}','easy')">✅ 太简单</button>` +
+    `<button class="flag-btn${f === 'hard' ? ' on hard' : ''}" onclick="setFlag('${escapeHtml(name)}','hard')">⭐ 重难词</button>` +
+    `<button class="flag-btn${f === 'mastered' ? ' on mastered' : ''}" onclick="setFlag('${escapeHtml(name)}','mastered')">🟢 已掌握</button>`;
+}
+
+// ---- 每词记忆历史曲线 ----
+// 把该词全部模式的记忆记录聚合成时序（t 时间戳, r 1=记得/0=遗忘）
+function wordHistory(name) { return (tricks[name] && tricks[name].h) || []; }
+function buildCurveSvg(h) {
+  if (!h.length) return '<div class="empty">暂无记忆记录，多评几次就会出现曲线 📈</div>';
+  const W = 320, H = 120, pad = 16, n = h.length;
+  const xs = i => pad + (W - 2 * pad) * (n === 1 ? 0.5 : i / (n - 1));
+  const ys = r => (r ? H - pad - 8 : pad + 8);
+  const pts = h.map((e, i) => `${xs(i).toFixed(1)},${ys(e.r).toFixed(1)}`).join(' ');
+  const dots = h.map((e, i) => `<circle cx="${xs(i).toFixed(1)}" cy="${ys(e.r).toFixed(1)}" r="3" fill="${e.r ? '#2f6bff' : '#e0533d'}"></circle>`).join('');
+  const grid = `<line x1="${pad}" y1="${ys(1)}" x2="${W - pad}" y2="${ys(1)}" stroke="#e3e8f0" stroke-dasharray="3 3"></line>` +
+    `<line x1="${pad}" y1="${ys(0)}" x2="${W - pad}" y2="${ys(0)}" stroke="#e3e8f0" stroke-dasharray="3 3"></line>`;
+  return `<svg viewBox="0 0 ${W} ${H}" class="curve-svg" preserveAspectRatio="xMidYMid meet">${grid}<polyline points="${pts}" fill="none" stroke="#9bb4ff" stroke-width="2"></polyline>${dots}</svg>`;
+}
+function curveStats(h) {
+  if (!h.length) return '';
+  const rate = (h.reduce((a, e) => a + e.r, 0) / h.length * 100).toFixed(0);
+  let shape = '记忆较平稳';
+  if (h.length >= 3) {
+    const first = h[0].r, last = h[h.length - 1].r;
+    if (first === 1 && last === 0) shape = '先会后忘，注意巩固';
+    else if (h.some(e => e.r === 0) && h.some(e => e.r === 1)) shape = '起伏不定，建议重点练';
+  }
+  return `<div class="curve-stats">共 <b>${h.length}</b> 次 · 记忆率 <b>${rate}%</b> · ${shape}</div>`;
+}
+function showCurve() {
+  const { w } = queue[idx];
+  const h = wordHistory(w.name);
+  document.getElementById('curveWord').textContent = w.name;
+  document.getElementById('curveBody').innerHTML = buildCurveSvg(h) + curveStats(h);
+  document.getElementById('curveDlg').showModal();
+}
+function closeCurve() { const d = document.getElementById('curveDlg'); if (d) d.close(); }
 function getDue(name) { const r = srOf(name); return r.due || 0; }
 function modeLearned(m) { const mm = SR[m] || {}; let c = 0; for (const n in mm) if (mm[n].l > 0) c++; return c; }
 function modeDue(m) { const now = Date.now(); const mm = SR[m] || {}; let c = 0; for (const n in mm) if (mm[n].due <= now) c++; return c; }
 
 // 复习队列：待复习(到点)优先，其次未学，最后远期；乱序则打乱
 function buildQueue() {
-  let arr = WORDS.map(w => ({ w, lv: srOf(w.name).l || 0 }));
+  const baseWords = (isNaN(rangeFrom) && isNaN(rangeTo)) ? WORDS
+    : WORDS.slice(isNaN(rangeFrom) ? 0 : rangeFrom, isNaN(rangeTo) ? WORDS.length : rangeTo);
+  let arr = baseWords.map(w => ({ w, lv: srOf(w.name).l || 0 }));
   if (weakOnly) arr = arr.filter(x => x.lv === 1 || x.lv === 2);
   if (wrongOnly) arr = arr.filter(x => { const b = bestLevel(x.w.name); return b >= 1 && b <= 2; });
+  arr = arr.filter(x => !isEasy(x.w.name));   // 太简单：整体退役，不再出现
   const now = Date.now();
   arr.sort((a, b) => {
+    const ha = isHard(a.w.name) ? 0 : 1, hb = isHard(b.w.name) ? 0 : 1;
+    if (ha !== hb) return ha - hb;            // 重难词优先
     const da = getDue(a.w.name), db = getDue(b.w.name);
     const oa = da <= now ? 0 : 1, ob = db <= now ? 0 : 1;
     if (oa !== ob) return oa - ob;            // 到点优先
@@ -64,6 +130,7 @@ function buildQueue() {
 }
 let queue = [];
 let idx = 0;
+let studiedCount = 0;   // 本场已评词数，用于离开页面防误退提示
 
 // 音标格式化（优先显示所选英美音，否则两者都显示）
 function formatPhon(w) {
@@ -77,9 +144,18 @@ function formatPhon(w) {
   return parts.join('  ');
 }
 
-// 例句 HTML（主卡片用）
+// 例句 HTML（主卡片用）：高亮例句中的目标单词（先转义防 XSS，再注入 <mark>）
 function exampleHtml(w) {
-  return w.ex ? '<div class="ex">📖 ' + escapeHtml(w.ex) + '</div>' : '';
+  if (!w.ex) return '';
+  let html = escapeHtml(w.ex);
+  const term = escapeHtml(w.name);
+  if (term) {
+    try {
+      const re = new RegExp('(' + term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+      html = html.replace(re, '<mark>$1</mark>');
+    } catch (e) {}
+  }
+  return '<div class="ex">📖 ' + html + '</div>';
 }
 
 // 朗读（真人发音：有道 dictvoice，回退浏览器 TTS）
@@ -164,6 +240,13 @@ function show() {
   else if (mode === 'spelling') showSpelling(w);
   else if (mode === 'quizEn') showQuizEn(w);
   else if (mode === 'quizCn') showQuizCn(w);
+  // 在评级区下方挂载标记工具条（每次重建 actions 后会丢失，故重新创建并渲染）
+  let fb = document.getElementById('flagBar');
+  if (!fb) {
+    const ab = document.getElementById('actions');
+    if (ab) { fb = document.createElement('div'); fb.id = 'flagBar'; fb.className = 'flag-bar'; ab.appendChild(fb); }
+  }
+  renderFlagBar(w.name);
 }
 
 // 模式一：看词记义
@@ -321,6 +404,14 @@ function rate(targetLv) {
     SR[mode][w.name] = { l: newLv, due: now + iv * DAY, iv: iv };
   }
   saveSR();
+  // 记录记忆历史（用于每词记忆曲线）：记得(r=1) / 遗忘(r=0)
+  if (!tricks[w.name]) tricks[w.name] = {};
+  const hh = tricks[w.name].h || [];
+  hh.push({ t: now, r: newLv >= 3 ? 1 : 0 });
+  if (hh.length > 30) hh.shift();
+  tricks[w.name].h = hh;
+  Sync.saveTricks(tricks);
+  studiedCount++;
   // 重复记忆：评 不会(L1)/模糊(L2) 且未达上限 -> 本轮稍后重练该词
   if (repeatOn && (newLv === 0 || newLv === 1) && (repeatCount[w.name] || 0) < REPEAT_LIMIT) {
     repeatCount[w.name] = (repeatCount[w.name] || 0) + 1;
@@ -340,6 +431,15 @@ function nextCard() {
     show();
   }
 }
+function prevCard() {
+  if (idx > 0) { idx--; show(); }
+}
+function toggleRepeat() {
+  repeatOn = !repeatOn;
+  queue = buildQueue();
+  idx = 0;
+  show();
+}
 
 // 巧记编辑
 function openTrick() {
@@ -355,12 +455,14 @@ function openTrick() {
 function closeTrick() { $('#trickDlg').close(); }
 function saveTrick() {
   const { w } = queue[idx];
-  tricks[w.name] = {
+  const cur = tricks[w.name] || {};
+  // 合并而非覆盖，保留 flag / h 等字段
+  tricks[w.name] = Object.assign({}, cur, {
     assoc: $('#trickAssoc').value.trim(),
     root: $('#trickRoot').value.trim(),
     homo: $('#trickHomo').value.trim(),
     ex: $('#trickEx').value.trim(),
-  };
+  });
   Sync.saveTricks(tricks);
   closeTrick();
   renderTrick();
@@ -384,6 +486,19 @@ function $$(s) { return Array.from(document.querySelectorAll(s)); }
 // 快捷键
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+  if (e.key === 'Escape') { closeTrick(); closeCurve(); return; }
+  if (!queue[idx]) return;
+  // 标记快捷键（Shift + E/H/G）
+  if (e.shiftKey) {
+    const k = e.key.toLowerCase();
+    if (k === 'e') { e.preventDefault(); setFlag(queue[idx].w.name, 'easy'); return; }
+    if (k === 'h') { e.preventDefault(); setFlag(queue[idx].w.name, 'hard'); return; }
+    if (k === 'g') { e.preventDefault(); setFlag(queue[idx].w.name, 'mastered'); return; }
+  }
+  if (e.key === 'n' || e.key === 'N') { openTrick(); return; }
+  if (e.key === 'r' || e.key === 'R') { toggleRepeat(); return; }
+  if (e.key === 'ArrowUp') { e.preventDefault(); prevCard(); return; }
+  if (e.key === 'ArrowDown') { e.preventDefault(); nextCard(); return; }
   if (mode === 'meaning') {
     if (e.key === ' ') { e.preventDefault(); revealMeaning(); }
     else if (e.key === 'ArrowRight') { if ($('#rateWrap') && $('#rateWrap').style.display !== 'none') rate(4); }
@@ -400,7 +515,10 @@ document.addEventListener('keydown', e => {
       }
     }
   }
-  if (e.key === 'Escape') closeTrick();
+});
+// 离开页面防误退：本场已学过词则确认
+window.addEventListener('beforeunload', function (e) {
+  if (studiedCount > 0) { e.preventDefault(); e.returnValue = ''; }
 });
 // 启动：从云端或本地加载数据后再构建队列并渲染（只执行一次，避免双重 buildQueue/show）
 let leBooted = false;

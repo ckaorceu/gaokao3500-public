@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://bkuvirojzuetweondgrx.supabase.co">
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="dns-prefetch" href="https://dict.youdao.com">
-<link rel="stylesheet" href="style.css?v=19">
+<link rel="stylesheet" href="style.css?v=21">
 </head>
 <body>
 <header class="topbar">
@@ -28,6 +28,7 @@
   <section class="hero">
     <h1>高考英语 · 3500词巧记</h1>
     <p class="subtitle">基于艾宾浩斯遗忘曲线，5级间隔复习 · 全部 3893 词条</p>
+    <p class="quote" id="quote"></p>
   </section>
 
   <section class="quick">
@@ -35,9 +36,17 @@
       <span class="qc-icon">🔴</span>
       <span class="qc-text">错词本 <b id="wrongCount">0</b></span>
     </a>
+    <a class="quick-card" href="#" onclick="toggleHard();return false;">
+      <span class="qc-icon">⭐</span>
+      <span class="qc-text">重难词本 <b id="hardCount">0</b></span>
+    </a>
     <a class="quick-card" href="learn.html?mode=meaning&drill=weak">
       <span class="qc-icon">📚</span>
       <span class="qc-text">未掌握词</span>
+    </a>
+    <a class="quick-card" href="calendar.html">
+      <span class="qc-icon">📅</span>
+      <span class="qc-text">复习日历</span>
     </a>
   </section>
 
@@ -49,6 +58,11 @@
     </div>
     <div class="block-label">复习等级分布</div>
     <div class="levels" id="levels"></div>
+  </section>
+
+  <section class="unit-block">
+    <div class="block-label">📚 词书进度（按 50 词/单元 · 蓝=历史记忆率，绿=本轮熟记率 · 点单元练习）</div>
+    <div class="unit-list" id="unitProgress"></div>
   </section>
 
   <section class="mode-picker">
@@ -102,6 +116,15 @@
       <option value="l4">L4</option>
       <option value="l5">L5</option>
     </select>
+    <div class="sort-row">
+      <span class="block-label" style="margin:0">排序</span>
+      <div class="order-chips" id="sortChips">
+        <div class="order-chip active" data-sort="default">默认</div>
+        <div class="order-chip" data-sort="shuffle">乱序</div>
+        <div class="order-chip" data-sort="rate">记忆率低→高</div>
+        <div class="order-chip" data-sort="reviews">复习次数多→少</div>
+      </div>
+    </div>
     <button id="reset" class="ghost">重置进度</button>
   </section>
 
@@ -112,8 +135,9 @@
 <script defer src="config.js?v=3" charset="utf-8"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-<script defer src="sync.js?v=16" charset="utf-8"></script>
-<script defer src="app.js?v=23" charset="utf-8"></script>
+<script defer src="sync.js?v=18" charset="utf-8"></script>
+<script defer src="quotes.js?v=1" charset="utf-8"></script>
+<script defer src="app.js?v=25" charset="utf-8"></script>
 <!-- deploy: turnstile-ui-polish-3 -->
 </body>
 </html>

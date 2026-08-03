@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>复习日历 · 高考3500词</title>
+<meta name="theme-color" content="#2f6bff">
+<link rel="stylesheet" href="style.css?v=21">
+<style>
+  .cal-wrap{max-width:760px;margin:0 auto;padding:18px 14px 40px}
+  .cal-head{display:flex;align-items:center;justify-content:space-between;margin:8px 0 14px}
+  .cal-head h2{font-size:18px;margin:0}
+  .cal-nav button{border:1px solid #d4dc ;border-radius:8px;background:#fff;padding:6px 12px;cursor:pointer;margin-left:6px}
+  .cal-nav button:hover{background:#eef3ff}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+  .cal-dow{text-align:center;font-size:12px;color:#8a94a6;padding:4px 0}
+  .cal-cell{position:relative;min-height:62px;border:1px solid #eceff4;border-radius:10px;padding:6px;cursor:default;background:#fafbfd;font-size:13px;transition:.15s}
+  .cal-cell.has-due{cursor:pointer}
+  .cal-cell.has-due:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(47,107,255,.15)}
+  .cal-cell .dnum{font-weight:600;color:#2b3242}
+  .cal-cell.today{outline:2px solid #2f6bff}
+  .cal-cell.studied{background:#eafaf0}
+  .cal-cell .cnt{position:absolute;right:6px;bottom:6px;font-size:11px;color:#1d3fae;font-weight:700}
+  .cal-cell .studied-dot{position:absolute;left:6px;bottom:6px;width:7px;height:7px;border-radius:50%;background:#37b24d}
+  .cal-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#6b7488;margin:12px 0}
+  .cal-legend span{display:inline-flex;align-items:center;gap:5px}
+  .lg{width:12px;height:12px;border-radius:3px;display:inline-block}
+  .cal-detail{margin-top:18px}
+  .cal-detail h3{font-size:15px;margin:0 0 10px}
+  .cal-wordlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+  .cal-wordlist a{display:block;border:1px solid #eceff4;border-radius:8px;padding:8px 10px;text-decoration:none;color:#2b3242;background:#fff}
+  .cal-wordlist a:hover{background:#eef3ff;border-color:#c3d4ff}
+  .cal-wordlist .w{font-weight:600}
+  .cal-wordlist .m{font-size:12px;color:#6b7488;margin-top:2px}
+  .cal-empty{color:#8a94a6;font-size:13px;padding:8px 0}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="back" href="index.html">← 返回</a>
+  <div class="brand">📅 复习日历</div>
+  <div id="auth-mount"></div>
+</header>
+
+<main class="cal-wrap">
+  <div class="cal-head">
+    <h2 id="calTitle">复习日历</h2>
+    <div class="cal-nav">
+      <button id="prevM">← 上个月</button>
+      <button id="nextM">下个月 →</button>
+    </div>
+  </div>
+  <div class="cal-legend">
+    <span><i class="lg" style="background:#cdd9ff"></i> 当日有待复习词</span>
+    <span><i class="lg" style="background:#eafaf0;border:1px solid #bfe6c9"></i> 当天学过</span>
+    <span><i class="lg" style="background:#fff;border:2px solid #2f6bff"></i> 今天</span>
+  </div>
+  <div class="cal-grid" id="calDow">
+    <div class="cal-dow">日</div><div class="cal-dow">一</div><div class="cal-dow">二</div>
+    <div class="cal-dow">三</div><div class="cal-dow">四</div><div class="cal-dow">五</div><div class="cal-dow">六</div>
+  </div>
+  <div class="cal-grid" id="calGrid" style="margin-top:6px"></div>
+
+  <section class="cal-detail" id="calDetail">
+    <div class="cal-empty">点击有「待复习」标记的日期，查看当天要复习的单词。</div>
+  </section>
+</main>
+
+<script defer src="words.js" charset="utf-8"></script>
+<script defer src="config.js?v=3" charset="utf-8"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script defer src="sync.js?v=17" charset="utf-8"></script>
+<script defer src="calendar.js?v=1" charset="utf-8"></script>
+</body>
+</html>

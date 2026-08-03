@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://bkuvirojzuetweondgrx.supabase.co">
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="dns-prefetch" href="https://dict.youdao.com">
-<link rel="stylesheet" href="style.css?v=19">
+<link rel="stylesheet" href="style.css?v=21">
 </head>
 <body>
 <header class="topbar">
@@ -38,6 +38,7 @@
   <section class="trick-panel">
     <div class="trick-head">
       <span>💡 巧记方法</span>
+      <button class="link-btn" onclick="showCurve()">📈 曲线</button>
       <button class="link-btn" onclick="openTrick()">编辑</button>
     </div>
     <div class="trick-body" id="trickBody"></div>
@@ -58,10 +59,20 @@
   </form>
 </dialog>
 
+<dialog id="curveDlg">
+  <div class="curve-form">
+    <h3>📈 记忆曲线 — <span id="curveWord"></span></h3>
+    <div id="curveBody"></div>
+    <div class="dlg-actions">
+      <button type="button" class="primary" onclick="closeCurve()">关闭</button>
+    </div>
+  </div>
+</dialog>
+
 <script defer src="words.js" charset="utf-8"></script>
 <script defer src="config.js?v=3" charset="utf-8"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script defer src="sync.js?v=16" charset="utf-8"></script>
-<script defer src="learn.js?v=21" charset="utf-8"></script>
+<script defer src="sync.js?v=18" charset="utf-8"></script>
+<script defer src="learn.js?v=23" charset="utf-8"></script>
 </body>
 </html>
