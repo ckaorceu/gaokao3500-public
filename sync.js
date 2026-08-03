@@ -16,6 +16,11 @@
   var DAY = 86400000;
   var STREAK_KEY = 'gaokao3500.streak.v1';
 
+  // 调试日志开关：默认关闭，避免降级路径在正常使用中刷屏控制台。
+  // 开启方式：① URL 带 ?debug=1  ② localStorage 设 gaokao3500.debug=1
+  var SYNC_DEBUG = (typeof location !== 'undefined' && typeof location.search === 'string' && /[?&]debug=1(?:&|#|$)/.test(location.search))
+    || (typeof localStorage !== 'undefined' && localStorage.getItem('gaokao3500.debug') === '1');
+
   var sb = null;          // supabase client
   var user = null;        // 当前登录用户
   var authCbs = [];       // onAuth 回调列表
@@ -211,19 +216,23 @@
     wireAccentToggle();
     var c = config();
     if (!c) {
-      console.warn('[Sync] 未检测到 Supabase anon key（仍为占位符），使用本地 localStorage 模式。');
+      // 预期降级：未配置 anon key 时回退 localStorage，属正常分支而非异常
+      if (SYNC_DEBUG) console.warn('[Sync] 未检测到 Supabase anon key（仍为占位符），使用本地 localStorage 模式。');
       renderAuth();
       return;
     }
     if (typeof supabase === 'undefined' || !supabase.createClient) {
-      console.error('[Sync] Supabase JS SDK 未加载，降级为本地模式。');
+      // 预期降级：SDK 未加载（离线 / CDN 失败）时回退本地模式
+      if (SYNC_DEBUG) console.error('[Sync] Supabase JS SDK 未加载，降级为本地模式。');
       renderAuth();
       return;
     }
     try {
       sb = supabase.createClient(c.url, c.key);
     } catch (e) {
-      console.error('[Sync] 创建 Supabase 客户端失败：', e);
+      // 预期降级：创建客户端失败（多为 key 格式错误）回退本地模式；
+      // 详细错误仅在 DEBUG 下打印，避免对普通用户刷屏
+      if (SYNC_DEBUG) console.error('[Sync] 创建 Supabase 客户端失败：', e);
       renderAuth();
       return;
     }
@@ -232,7 +241,7 @@
     function notify() {
       authCbs.forEach(function (cb) {
         try { cb(user ? { id: user.id, email: user.email } : null); }
-        catch (e) { console.error(e); }
+        catch (e) { console.error(e); } // 回调异常，有意保留错误日志
       });
     }
 

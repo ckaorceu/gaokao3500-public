@@ -458,21 +458,20 @@ function rate(targetLv) {
   let newLv = (typeof targetLv === 'number') ? targetLv : 0;
   if (newLv > 4) newLv = 4;          // 评级体系仅 L1~L4，防御越界（快捷键曾误用 rate(5)）
   const now = Date.now();
-  // 遗忘曲线间隔（天）：不会(L1)→1，模糊(L2)→2，一般(L3)→4，熟记(L4)→15
-  const SRS_IV = { 1: 1, 2: 2, 3: 4, 4: 15 };
+  // 遗忘曲线间隔改由 srs-core.js 的 srsInterval() 提供（见 <script src="srs-core.js">）
   if (!SR[mode]) SR[mode] = {};
   if (newLv <= 0) {
     // 不会：降级为 L1 薄弱词，明天再练（进入错词本，不再清空中进度）
     SR[mode][w.name] = { l: 1, due: now + 1 * DAY, iv: 1 };
   } else {
-    const iv = SRS_IV[newLv] || 1;
+    const iv = srsInterval(newLv);
     SR[mode][w.name] = { l: newLv, due: now + iv * DAY, iv: iv };
   }
   saveSR();
   // 记录记忆历史（用于每词记忆曲线）：记得(r=1) / 遗忘(r=0)
   if (!tricks[w.name]) tricks[w.name] = {};
   const hh = tricks[w.name].h || [];
-  hh.push({ t: now, r: newLv >= 3 ? 1 : 0 });
+  hh.push({ t: now, r: recallFlag(newLv) });
   if (hh.length > 30) hh.shift();
   tricks[w.name].h = hh;
   Sync.saveTricksNow(tricks);
