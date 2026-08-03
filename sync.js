@@ -97,6 +97,11 @@
   }
   var _cfWidgets = {};   // action -> widgetId
   function cfRender(action) {
+    if (!shouldShowCaptcha()) {   // 全局开关关 / sitekey 占位 -> 不渲染并隐藏控件
+      var _w = document.querySelector('#authOverlay .cf-wrap');
+      if (_w) _w.style.display = 'none';
+      return null;
+    }
     if (!cfKeyReal()) return null;   // 仅 sitekey 真实才渲染；占位则跳过（渐进式上线）
     var el = document.getElementById('cfBox');
     if (!el) return null;
@@ -135,15 +140,65 @@
   }
   function cfReset(action) { try { if (window.turnstile && _cfWidgets[action] != null) window.turnstile.reset(_cfWidgets[action]); } catch (e) {} }
 
-  // 管理员登录豁免人机验证：命中白名单（邮箱/用户名，大小写不敏感、trim）即跳过 Turnstile。
+  // ---------- 功能开关缓存（来自 feature_flags 表，由后台「🎛️ 运营」管理） ----------
+  var _flags = null;            // { key: enabled }
+  var _flagsReady = false;
+  var _adminByIdent = {};       // 标识符(小写) -> true/false/null(未知)
+  function ensureFlags() {
+    if (_flagsReady) return Promise.resolve(_flags || {});
+    _flagsReady = true;
+    if (!sb) { _flags = {}; return Promise.resolve(_flags); }
+    return sb.rpc('public_feature_flags').then(function (r) {
+      _flags = {};
+      var rows = (r && r.data) || r || [];
+      rows.forEach(function (row) { _flags[row.key] = row.enabled; });
+      return _flags;
+    }).catch(function () { _flags = {}; return _flags; });
+  }
+  // 开关默认「开」（undefined 视为开），只有显式 false 才关
+  function flagOn(key) { return !_flags || _flags[key] !== false; }
+  // 全局是否应展示人机验证（受全局开关 + sitekey 真实性双重控制）
+  function shouldShowCaptcha() { return cfKeyReal() && flagOn('captcha_enabled'); }
+
+  // 管理员登录豁免：开关开 + 该账号确为管理员（按邮箱/用户名实时判定，覆盖所有管理员）
   function isAdminBypass(identifier) {
+    var k = (identifier || '').trim().toLowerCase();
+    if (!k) return false;
+    if (flagOn('admin_bypass_captcha') === false) return false;   // 开关关：不豁免
+    if (whitelistHit(k)) return true;                             // 兜底白名单（RPC 不可用时）
+    if (_adminByIdent[k] === true) return true;                   // 已确认是管理员
+    checkAdminIdent(k);                                           // 未知则异步查（先按非管理员处理）
+    return _adminByIdent[k] === true;
+  }
+  function whitelistHit(k) {
     var list = window.ADMIN_BYPASS_CAPTCHA || [];
-    if (!list.length) return false;
-    var id = (identifier || '').trim().toLowerCase();
     for (var i = 0; i < list.length; i++) {
-      if ((list[i] || '').trim().toLowerCase() === id) return true;
+      if ((list[i] || '').trim().toLowerCase() === k) return true;
     }
     return false;
+  }
+  // 按登录标识符异步判定是否为管理员（公开 RPC is_admin_login，供登录前实时判断）
+  function checkAdminIdent(k) {
+    if (_adminByIdent[k] !== undefined) return;
+    _adminByIdent[k] = null;
+    if (!sb) { _adminByIdent[k] = false; return; }
+    sb.rpc('is_admin_login', { p_login: k }).then(function (r) {
+      _adminByIdent[k] = !!(r && r.data);
+      refreshLoginCaptcha();
+    }).catch(function () { _adminByIdent[k] = false; refreshLoginCaptcha(); });
+  }
+  var _lastCaptchaShown = null;
+  // 登录框根据「全局开关 + 是否管理员」动态显隐人机验证控件（避免每次按键重复渲染）
+  function refreshLoginCaptcha() {
+    var idEl = document.getElementById('authId');
+    if (!idEl) return;
+    var wrap = document.querySelector('#authOverlay .cf-wrap');
+    if (!wrap) return;
+    var show = shouldShowCaptcha() && !isAdminBypass(idEl.value);
+    if (show === _lastCaptchaShown) return;
+    _lastCaptchaShown = show;
+    wrap.style.display = show ? '' : 'none';
+    if (show) cfRender('login');
   }
 
   // 验证码（注册/找回密码/改邮箱）现在直接走 Supabase 官方 SDK，
@@ -194,6 +249,7 @@
       if (user) { fetchUsername(); fetchAdmin(); }
       notify();
     });
+    ensureFlags();   // 预拉取功能开关（含全局人机验证 / 管理员豁免）
     renderAuth();
   }
 
@@ -591,13 +647,13 @@
     var idEl = document.getElementById('authId');
     if (idEl) {
       idEl.focus();
-      // 管理员白名单命中时隐藏人机验证控件（动态）
+      // 全局关闭或管理员登录时，动态隐藏/显示人机验证控件
       idEl.addEventListener('input', function () {
-        var wrap = document.querySelector('#authOverlay .cf-wrap');
-        if (wrap) wrap.style.display = isAdminBypass(idEl.value) ? 'none' : '';
+        checkAdminIdent(idEl.value);
+        refreshLoginCaptcha();
       });
-      var wrap0 = document.querySelector('#authOverlay .cf-wrap');
-      if (wrap0) wrap0.style.display = isAdminBypass(idEl.value) ? 'none' : '';
+      checkAdminIdent(idEl.value);
+      refreshLoginCaptcha();
     }
     cfRender('login');
   }
@@ -631,7 +687,7 @@
     var msg = document.getElementById('authMsg');
     if (!id || !pw) { msg.className = 'auth-msg err'; msg.textContent = '请填写账号和密码'; return; }
     if (pw.length < 6) { msg.className = 'auth-msg err'; msg.textContent = '密码至少 6 位'; return; }
-    if (cfKeyReal() && !isAdminBypass(id) && !cfToken('login')) { msg.className = 'auth-msg err'; msg.textContent = '请先完成人机验证'; return; }
+    if (shouldShowCaptcha() && !isAdminBypass(id) && !cfToken('login')) { msg.className = 'auth-msg err'; msg.textContent = '请先完成人机验证'; return; }
     msg.className = 'auth-msg'; msg.textContent = '处理中…';
     signIn(id, pw, isAdminBypass(id) ? '' : cfToken('login')).then(function () {
       cfReset('login');
@@ -653,7 +709,7 @@
     if (!uname || !email || !pw) { msg.className = 'auth-msg err'; msg.textContent = '请填写用户名、邮箱和密码'; return; }
     if (!/^[\w一-龥]{3,20}$/.test(uname)) { msg.className = 'auth-msg err'; msg.textContent = '用户名需 3-20 位（字母/数字/中文/下划线）'; return; }
     if (pw.length < 6) { msg.className = 'auth-msg err'; msg.textContent = '密码至少 6 位'; return; }
-    if (cfKeyReal()) {
+    if (shouldShowCaptcha()) {
       if (!window.turnstile) { msg.className = 'auth-msg err'; msg.textContent = '人机验证组件加载中，请稍候重试'; return; }
       var tk = cfToken('signup');
       if (!tk) { msg.className = 'auth-msg err'; msg.textContent = '请先完成人机验证'; return; }
@@ -661,7 +717,7 @@
     msg.className = 'auth-msg'; msg.textContent = '检查用户名…';
     usernameAvailable(uname).then(function (ok) {
       if (!ok) { msg.className = 'auth-msg err'; msg.textContent = '用户名已被占用'; return; }
-      if (cfKeyReal() && !cfToken('signup')) { msg.className = 'auth-msg err'; msg.textContent = '人机验证已失效，请重试'; return; }
+      if (shouldShowCaptcha() && !cfToken('signup')) { msg.className = 'auth-msg err'; msg.textContent = '人机验证已失效，请重试'; return; }
       msg.textContent = '注册中…';
       pendingReg = { email: email, pw: pw, uname: uname };
       return signUp(email, pw, uname, cfToken('signup'));
@@ -692,6 +748,7 @@
       '<div class="auth-forgot"><a href="#" id="authBackLogin">返回登录</a></div>'
     );
     cfRender('signup');
+    if (!shouldShowCaptcha()) { var _ow = document.querySelector('#authOverlay .cf-wrap'); if (_ow) _ow.style.display = 'none'; }
     var m = document.getElementById('authMsg');
     function doVerify() {
       var code = (document.getElementById('authCode').value || '').trim();
@@ -714,7 +771,7 @@
     document.getElementById('authBackLogin').onclick = function (e) { e.preventDefault(); showLogin(); };
     document.getElementById('authResend').onclick = function () {
       if (!pendingReg) return;
-      if (cfKeyReal() && !cfToken('signup')) { m.className = 'auth-msg err'; m.textContent = '请先完成人机验证'; return; }
+      if (shouldShowCaptcha() && !cfToken('signup')) { m.className = 'auth-msg err'; m.textContent = '请先完成人机验证'; return; }
       signUp(pendingReg.email, pendingReg.pw, pendingReg.uname, cfToken('signup'))
         .then(function () {
           cfReset('signup'); cfRender('signup');
@@ -757,7 +814,7 @@
     var email = (document.getElementById('authResetEmail').value || '').trim();
     var msg = document.getElementById('authResetMsg');
     if (!email) { msg.className = 'auth-msg err'; msg.textContent = '请填写邮箱'; return; }
-    if (cfKeyReal() && !cfToken('recovery')) { msg.className = 'auth-msg err'; msg.textContent = '请先完成人机验证'; return; }
+    if (shouldShowCaptcha() && !cfToken('recovery')) { msg.className = 'auth-msg err'; msg.textContent = '请先完成人机验证'; return; }
     msg.className = 'auth-msg'; msg.textContent = '发送中…';
     sb.auth.resetPasswordForEmail(email, cfToken('recovery') ? { captchaToken: cfToken('recovery') } : undefined).then(function (r) {
       if (r.error) throw r.error;
@@ -784,7 +841,7 @@
     var m = document.getElementById('authResetMsg');
     document.getElementById('authRecBack').onclick = function (e) { e.preventDefault(); showLogin(); };
     document.getElementById('authRecResend').onclick = function () {
-      if (cfKeyReal() && !cfToken('recovery')) { m.className = 'auth-msg err'; m.textContent = '请先完成人机验证'; return; }
+      if (shouldShowCaptcha() && !cfToken('recovery')) { m.className = 'auth-msg err'; m.textContent = '请先完成人机验证'; return; }
       sb.auth.resetPasswordForEmail(email, cfToken('recovery') ? { captchaToken: cfToken('recovery') } : undefined).then(function (r) {
         if (r.error) throw r.error;
         cfReset('recovery');
@@ -856,7 +913,7 @@
     var msg = document.getElementById('authMsg');
     if (!ne) { msg.className = 'auth-msg err'; msg.textContent = '请填写新邮箱'; return; }
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(ne)) { msg.className = 'auth-msg err'; msg.textContent = '邮箱格式不正确'; return; }
-    if (cfKeyReal() && !cfToken('email_change')) { msg.className = 'auth-msg err'; msg.textContent = '请先完成人机验证'; return; }
+    if (shouldShowCaptcha() && !cfToken('email_change')) { msg.className = 'auth-msg err'; msg.textContent = '请先完成人机验证'; return; }
     msg.className = 'auth-msg'; msg.textContent = '获取会话…';
     sb.auth.getSession().then(function (res) {
       var sess = res.data && res.data.session;
@@ -905,7 +962,7 @@
     if (!cur || !nw || !nw2) { msg.className = 'auth-msg err'; msg.textContent = '请填写所有字段'; return; }
     if (nw.length < 6) { msg.className = 'auth-msg err'; msg.textContent = '新密码至少 6 位'; return; }
     if (nw !== nw2) { msg.className = 'auth-msg err'; msg.textContent = '两次输入的新密码不一致'; return; }
-    if (cfKeyReal() && !cfToken('changepw')) { msg.className = 'auth-msg err'; msg.textContent = '请先完成人机验证'; return; }
+    if (shouldShowCaptcha() && !cfToken('changepw')) { msg.className = 'auth-msg err'; msg.textContent = '请先完成人机验证'; return; }
     msg.className = 'auth-msg'; msg.textContent = '验证中…';
     changePassword(cur, nw, cfToken('changepw')).then(function () {
       cfReset('changepw');
