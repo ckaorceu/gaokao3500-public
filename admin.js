@@ -725,10 +725,26 @@
   function loadFlags() {
     Sync.rpc('admin_list_feature_flags').then(function (rows) {
       if (!rows || !rows.length) { $('#flagList').innerHTML = '<div class="empty">暂无开关</div>'; return; }
-      $('#flagList').innerHTML = rows.map(function (f) {
-        return '<label class="flag-row"><span><b>' + escapeHtml(f.label || f.key) + '</b><small>' + escapeHtml(f.key) + '</small></span>' +
-          '<input type="checkbox" class="flag-toggle" data-key="' + escapeHtml(f.key) + '"' + (f.enabled ? ' checked' : '') + '></label>';
-      }).join('');
+      // 按 key 前缀分组：content / learning / nav / security
+      var groups = { content: '内容展示', learning: '学习增强', nav: '导航交互', security: '安全' };
+      var order = ['content', 'learning', 'nav', 'security'];
+      var map = {};
+      rows.forEach(function (f) {
+        var g = (f.key || '').split('.')[0];
+        if (!map[g]) map[g] = [];
+        map[g].push(f);
+      });
+      var html = '';
+      order.forEach(function (g) {
+        if (!map[g] || !map[g].length) return;
+        html += '<div class="flag-group"><div class="flag-group-title">' + (groups[g] || g) + '</div>';
+        html += map[g].map(function (f) {
+          return '<label class="flag-row"><span><b>' + escapeHtml(f.label || f.key) + '</b><small>' + escapeHtml(f.key) + '</small></span>' +
+            '<input type="checkbox" class="flag-toggle" data-key="' + escapeHtml(f.key) + '"' + (f.enabled ? ' checked' : '') + '></label>';
+        }).join('');
+        html += '</div>';
+      });
+      $('#flagList').innerHTML = html;
       $$('#flagList .flag-toggle').forEach(function (c) {
         c.onchange = function () {
           Sync.rpc('admin_set_feature_flag', { p_key: c.dataset.key, p_enabled: c.checked })

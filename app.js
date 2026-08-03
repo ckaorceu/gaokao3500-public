@@ -57,11 +57,11 @@ const LIST_PAGE_SIZE = 60;
 let listShown = false;
 let listPage = 0;
 const MODES = [
-  { id: 'meaning', name: '看词记义', desc: '看单词记释义', icon: 'icons/icon-word-to-meaning.svg' },
-  { id: 'word', name: '看义记词', desc: '看释义写单词', icon: 'icons/icon-meaning-to-word.svg' },
-  { id: 'spelling', name: '听音拼写', desc: '听发音拼写', icon: 'icons/icon-listen-spell.svg' },
-  { id: 'quizEn', name: '看英选中', desc: '选正确中文', icon: 'icons/icon-en-to-cn.svg' },
-  { id: 'quizCn', name: '看中选英', desc: '选正确英文', icon: 'icons/icon-cn-to-en.svg' },
+  { id: 'meaning', name: '看词记义', desc: '看单词记释义', icon: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiID8+PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB3aWR0aD0iNjQiIGhlaWdodD0iNjQiPjxwYXRoIGZpbGw9IiM0RjQ2RTUiIHRyYW5zZm9ybT0ibWF0cml4KDEgMCAwIDEgNS4zMzMzMyAxMy4zMzMzKSIgZD0iTTQxLjUxMjMgMy41OTM0UTM1LjAyMTkgLTAuOSAyNi42NjY3IC0wLjlRMTguMzExNCAtMC45IDExLjgyMSAzLjU5MzRRNS4yNzU1IDguMTI0OSAtMC43NzE3IDE4LjIwMzZRLTAuOTAyNCAxOC40MTY3IC0wLjkgMTguNjY2N1EtMC45MDI0IDE4LjkxNjYgLTAuNzcxNyAxOS4xMjk3UTUuMjc1NSAyOS4yMDg1IDExLjgyMSAzMy43NFExOC4zMTE1IDM4LjIzMzMgMjYuNjY2NyAzOC4yMzMzUTM1LjAyMTkgMzguMjMzMyA0MS41MTIzIDMzLjc0UTQ4LjA1NzggMjkuMjA4NCA1NC4xMDUxIDE5LjEyOTdRNTQuMjM1NyAxOC45MTY2IDU0LjIzMzMgMTguNjY2N1E1NC4yMzU3IDE4LjQxNjcgNTQuMTA1MSAxOC4yMDM2UTQ4LjA1NzkgOC4xMjQ5IDQxLjUxMjMgMy41OTM0Wk0xMi44NDU2IDUuMDczM1ExOC44NzM3IDAuOSAyNi42NjY3IDAuOVEzNC40NTk2IDAuOSA0MC40ODc3IDUuMDczM1E0Ni41NjUxIDkuMjgwOCA1Mi4yODE3IDE4LjY2NjdRNDYuNTY1MiAyOC4wNTI1IDQwLjQ4NzcgMzIuMjZRMzQuNDU5NiAzNi40MzMzIDI2LjY2NjcgMzYuNDMzM1ExOC44NzM3IDM2LjQzMzMgMTIuODQ1NiAzMi4yNlE2Ljc2ODIgMjguMDUyNiAxLjA1MTcgMTguNjY2N1E2Ljc2ODEgOS4yODA4IDEyLjg0NTYgNS4wNzMzWiIgZmlsbC1ydWxlPSJldmVub2RkIi8+PGNpcmNsZSBmaWxsPSJub25lIiBzdHJva2U9IiM0RjQ2RTUiIHN0cm9rZS13aWR0aD0iMS44IiB0cmFuc2Zvcm09Im1hdHJpeCgxIDAgMCAxIDIzLjQ2NjcgMjMuNDY2NykiIGN4PSI4LjUzMzMiIGN5PSI4LjUzMzMiIHI9IjguNTMzMyIvPjwvc3ZnPg==' },
+  { id: 'word', name: '看义记词', desc: '看释义写单词', icon: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiID8+PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB3aWR0aD0iNjQiIGhlaWdodD0iNjQiPjxwYXRoIGZpbGw9IiM0RjQ2RTUiIHRyYW5zZm9ybT0ibWF0cml4KDEgMCAwIDEgMTAuNjY2NyAxMikiIGQ9Ik0wLjUyNDggMzAuMjcxMlEwLjQ1ODYgMzAuNDA2IDAuNDQwMyAzMC41NTVMLTAuODkzIDQxLjIyMTdRLTAuOTUwNiA0MS41OTQ3IC0wLjcxMDQgNDEuODg1OVEtMC40ODc0IDQyLjE5MDQgLTAuMTExNiA0Mi4yMjY0US0wLjA1NiA0Mi4yMzMzIDAgNDIuMjMzM1EwLjA1NiA0Mi4yMzMzIDAuMTExNiA0Mi4yMjY0TDEwLjc3ODMgNDAuODkzUTEwLjkyNzMgNDAuODc0OCAxMS4wNjIxIDQwLjgwODVRMTEuMTk3MSA0MC43NDI4IDExLjMwMzEgNDAuNjM2NEw0MS45Njk3IDkuOTY5N1E0Mi4yNDQyIDkuNzEwNiA0Mi4yMzMzIDkuMzMzM1E0Mi4yNDQyIDguOTU2IDQxLjk2OTcgOC42OTY5TDMyLjYzNjQgLTAuNjM2NFEzMi4zNzczIC0wLjkxMDkgMzIgLTAuOVEzMS42MjI3IC0wLjkxMDkgMzEuMzYzNiAtMC42MzY0TDAuNjk2OSAzMC4wMzAzUTAuNTkwNSAzMC4xMzYyIDAuNTI0OCAzMC4yNzEyWk0yLjE4ODEgMzEuMDg0N0wxLjAzNjYgNDAuMjk2OEwxMC4yNDg2IDM5LjE0NTJMNDAuMDYwNSA5LjMzMzNMMzIgMS4yNzI4TDIuMTg4MSAzMS4wODQ3WiIgZmlsbC1ydWxlPSJldmVub2RkIi8+PHBhdGggZmlsbD0iIzRGNDZFNSIgdHJhbnNmb3JtPSJtYXRyaXgoMSAwIDAgMSAzOC42NjY3IDE4LjY2NjcpIiBkPSJNOC42MzY0IDcuMzYzNkwwLjYzNjQgLTAuNjM2NFEwLjM3NzMgLTAuOTEwOSAwIC0wLjlRLTAuMzc3MyAtMC45MTA5IC0wLjYzNjQgLTAuNjM2NFEtMC45MTA5IC0wLjM3NzMgLTAuOSAwUS0wLjkxMDkgMC4zNzczIC0wLjYzNjQgMC42MzY0TDcuMzYzNiA4LjYzNjRRNy42MjI3IDguOTEwOSA4IDguOVE4LjM3NzMgOC45MTA5IDguNjM2NCA4LjYzNjRROC45MTA5IDguMzc3MyA4LjkgOFE4LjkxMDkgNy42MjI3IDguNjM2NCA3LjM2MzZaIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4=' },
+  { id: 'spelling', name: '听音拼写', desc: '听发音拼写', icon: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiID8+PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB3aWR0aD0iNjQiIGhlaWdodD0iNjQiPjxwYXRoIGZpbGw9IiM0RjQ2RTUiIHRyYW5zZm9ybT0ibWF0cml4KDEgMCAwIDEgMTAuNjY2NyAxMC42NjY3KSIgZD0iTS0wLjkgMTguNjY2N0wtMC45IDI0US0wLjkxMDkgMjQuMzc3MyAtMC42MzY0IDI0LjYzNjRRLTAuMzc3MyAyNC45MTA5IDAgMjQuOVEwLjM3NzMgMjQuOTEwOSAwLjYzNjQgMjQuNjM2NFEwLjkxMDkgMjQuMzc3MyAwLjkgMjRMMC45IDE4LjY2NjdRMC45IDE0LjkzNzEgMi40NTk3IDExLjYzNDNRMy45Njk4IDguNDM2MyA2Ljc1NzIgNi4wMTI1UTkuNTQ5NCAzLjU4NDUgMTMuMjQwNiAyLjI2NDFRMTcuMDUzOSAwLjkgMjEuMzMzMyAwLjlRMjUuNjEyOCAwLjkgMjkuNDI2IDIuMjY0MVEzMy4xMTczIDMuNTg0NSAzNS45MDk0IDYuMDEyNVEzOC42OTY4IDguNDM2MyA0MC4yMDcgMTEuNjM0M1E0MS43NjY3IDE0LjkzNzEgNDEuNzY2NyAxOC42NjY3TDQxLjc2NjcgMjRRNDEuNzU1OCAyNC4zNzczIDQyLjAzMDMgMjQuNjM2NFE0Mi4yODk0IDI0LjkxMDkgNDIuNjY2NyAyNC45UTQzLjA0NCAyNC45MTA5IDQzLjMwMzEgMjQuNjM2NFE0My41Nzc1IDI0LjM3NzMgNDMuNTY2NyAyNEw0My41NjY3IDE4LjY2NjdRNDMuNTY2NyAxNC41MzM1IDQxLjgzNDcgMTAuODY1N1E0MC4xNjMxIDcuMzI2IDM3LjA5MDUgNC42NTQyUTM0LjA0MjcgMi4wMDM5IDMwLjAzMjMgMC41NjkyUTI1LjkyNTEgLTAuOSAyMS4zMzMzIC0wLjlRMTYuNzQxNiAtMC45IDEyLjYzNDQgMC41NjkyUTguNjI0IDIuMDAzOSA1LjU3NjEgNC42NTQyUTIuNTAzNSA3LjMyNiAwLjgzMiAxMC44NjU3US0wLjkgMTQuNTMzNSAtMC45IDE4LjY2NjdaIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48cmVjdCBmaWxsPSJub25lIiBzdHJva2U9IiM0RjQ2RTUiIHN0cm9rZS13aWR0aD0iMS44IiB0cmFuc2Zvcm09Im1hdHJpeCgxIDAgMCAxIDggMzMuMzMzMykiIHdpZHRoPSIxMC42NjY3IiBoZWlnaHQ9IjE4LjY2NjciIHJ4PSIyIiByeT0iMiIvPjxyZWN0IGZpbGw9Im5vbmUiIHN0cm9rZT0iIzRGNDZFNSIgc3Ryb2tlLXdpZHRoPSIxLjgiIHRyYW5zZm9ybT0ibWF0cml4KDEgMCAwIDEgNDUuMzMzMyAzMy4zMzMzKSIgd2lkdGg9IjEwLjY2NjciIGhlaWdodD0iMTguNjY2NyIgcng9IjIiIHJ5PSIyIi8+PC9zdmc+' },
+  { id: 'quizEn', name: '看英选中', desc: '选正确中文', icon: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiID8+PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB3aWR0aD0iNjQiIGhlaWdodD0iNjQiPjxyZWN0IGZpbGw9Im5vbmUiIHN0cm9rZT0iIzRGNDZFNSIgc3Ryb2tlLXdpZHRoPSIxLjgiIHRyYW5zZm9ybT0ibWF0cml4KDEgMCAwIDEgOCAxMC42NjY3KSIgd2lkdGg9IjQ4IiBoZWlnaHQ9IjEzLjMzMzMiIHJ4PSIyLjUiIHJ5PSIyLjUiLz48cmVjdCBmaWxsPSJub25lIiBzdHJva2U9IiM0RjQ2RTUiIHN0cm9rZS13aWR0aD0iMS44IiB0cmFuc2Zvcm09Im1hdHJpeCgxIDAgMCAxIDggMzcuMzMzMykiIHdpZHRoPSI0OCIgaGVpZ2h0PSIxMy4zMzMzIiByeD0iMi41IiByeT0iMi41Ii8+PHBhdGggZmlsbD0iIzRGNDZFNSIgdHJhbnNmb3JtPSJtYXRyaXgoMSAwIDAgMSAxNy4zMzMzIDE0LjY2NjcpIiBkPSJNMi42NjY3IDQuMDYwNUwwLjYzNjQgMi4wMzAzUTAuMzc3MyAxLjc1NTggMCAxLjc2NjdRLTAuMzc3MyAxLjc1NTggLTAuNjM2NCAyLjAzMDNRLTAuOTEwOSAyLjI4OTQgLTAuOSAyLjY2NjdRLTAuOTEwOSAzLjA0NCAtMC42MzY0IDMuMzAzMUwyLjAzMDMgNS45Njk3UTIuMjg5NCA2LjI0NDIgMi42NjY3IDYuMjMzM1EzLjA0NCA2LjI0NDIgMy4zMDMxIDUuOTY5N0w4LjYzNjQgMC42MzY0UTguOTEwOSAwLjM3NzMgOC45IDBROC45MTA5IC0wLjM3NzMgOC42MzY0IC0wLjYzNjRROC4zNzczIC0wLjkxMDkgOCAtMC45UTcuNjIyNyAtMC45MTA5IDcuMzYzNiAtMC42MzY0TDIuNjY2NyA0LjA2MDVaIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48ZWxsaXBzZSBmaWxsPSIjRjU5RTBCIiB0cmFuc2Zvcm09Im1hdHJpeCgxIDAgMCAxIDI3LjczMzMgMzkuNzMzMykiIGN4PSI0LjI2NjciIGN5PSI0LjI2NjciIHJ4PSI0LjI2NjciIHJ5PSI0LjI2NjciLz48L3N2Zz4=' },
+  { id: 'quizCn', name: '看中选英', desc: '选正确英文', icon: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiID8+PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB3aWR0aD0iNjQiIGhlaWdodD0iNjQiPjxwYXRoIGZpbGw9IiM0RjQ2RTUiIHRyYW5zZm9ybT0ibWF0cml4KDEgMCAwIDEgMTAuNjY2NyAyNCkiIGQ9Ik0yOS4zMzMzIC0wLjlMMCAtMC45US0wLjM3NzMgLTAuOTEwOSAtMC42MzY0IC0wLjYzNjRRLTAuOTEwOSAtMC4zNzczIC0wLjkgMFEtMC45MTA5IDAuMzc3MyAtMC42MzY0IDAuNjM2NFEtMC4zNzczIDAuOTEwOSAwIDAuOUwyOS4zMzMzIDAuOVEyOS43MTA2IDAuOTEwOSAyOS45Njk3IDAuNjM2NFEzMC4yNDQyIDAuMzc3MyAzMC4yMzMzIDBRMzAuMjQ0MiAtMC4zNzczIDI5Ljk2OTcgLTAuNjM2NFEyOS43MTA2IC0wLjkxMDkgMjkuMzMzMyAtMC45WiIgZmlsbC1ydWxlPSJldmVub2RkIi8+PHBhdGggZmlsbD0iIzRGNDZFNSIgdHJhbnNmb3JtPSJtYXRyaXgoMSAwIDAgMSAzMiAxNikiIGQ9Ik04LjYzNjQgNy4zNjM2TDAuNjM2NCAtMC42MzY0UTAuMzc3MyAtMC45MTA5IDAgLTAuOVEtMC4zNzczIC0wLjkxMDkgLTAuNjM2NCAtMC42MzY0US0wLjkxMDkgLTAuMzc3MyAtMC45IDBRLTAuOTEwOSAwLjM3NzMgLTAuNjM2NCAwLjYzNjRMNi43MjcyIDhMLTAuNjM2NCAxNS4zNjM2US0wLjkxMDkgMTUuNjIyNyAtMC45IDE2US0wLjkxMDkgMTYuMzc3MyAtMC42MzY0IDE2LjYzNjRRLTAuMzc3MyAxNi45MTA5IDAgMTYuOVEwLjM3NzMgMTYuOTEwOSAwLjYzNjQgMTYuNjM2NEw4LjYzNjQgOC42MzY0UTguOTEwOSA4LjM3NzMgOC45IDhROC45MTA5IDcuNjIyNyA4LjYzNjQgNy4zNjM2WiIgZmlsbC1ydWxlPSJldmVub2RkIi8+PHBhdGggZmlsbD0iIzRGNDZFNSIgdHJhbnNmb3JtPSJtYXRyaXgoMSAwIDAgMSAyNCA0MCkiIGQ9Ik0wIDAuOUwyOS4zMzMzIDAuOVEyOS43MTA2IDAuOTEwOSAyOS45Njk3IDAuNjM2NFEzMC4yNDQyIDAuMzc3MyAzMC4yMzMzIDBRMzAuMjQ0MiAtMC4zNzczIDI5Ljk2OTcgLTAuNjM2NFEyOS43MTA2IC0wLjkxMDkgMjkuMzMzMyAtMC45TDAgLTAuOVEtMC4zNzczIC0wLjkxMDkgLTAuNjM2NCAtMC42MzY0US0wLjkxMDkgLTAuMzc3MyAtMC45IDBRLTAuOTEwOSAwLjM3NzMgLTAuNjM2NCAwLjYzNjRRLTAuMzc3MyAwLjkxMDkgMCAwLjlaIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBmaWxsPSIjNEY0NkU1IiB0cmFuc2Zvcm09Im1hdHJpeCgxIDAgMCAxIDI0IDMyKSIgZD0iTTEuMjcyOCA4TDguNjM2NCAwLjYzNjRROC45MTA5IDAuMzc3MyA4LjkgMFE4LjkxMDkgLTAuMzc3MyA4LjYzNjQgLTAuNjM2NFE4LjM3NzMgLTAuOTEwOSA4IC0wLjlRNy42MjI3IC0wLjkxMDkgNy4zNjM2IC0wLjYzNjRMLTAuNjM2NCA3LjM2MzZRLTAuOTEwOSA3LjYyMjcgLTAuOSA4US0wLjkxMDkgOC4zNzczIC0wLjYzNjQgOC42MzY0TDcuMzYzNiAxNi42MzY0UTcuNjIyNyAxNi45MTA5IDggMTYuOVE4LjM3NzMgMTYuOTEwOSA4LjYzNjQgMTYuNjM2NFE4LjkxMDkgMTYuMzc3MyA4LjkgMTZROC45MTA5IDE1LjYyMjcgOC42MzY0IDE1LjM2MzZMMS4yNzI4IDhaIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4=' },
 ];
 
 function renderModePicker() {
@@ -117,7 +117,8 @@ function renderModePicker() {
     $$('#repeatMaxChips .drill-chip').forEach(c => c.classList.toggle('active', c.dataset.max === chip.dataset.max));
   });
   $('#startBtn').addEventListener('click', () => {
-    const first = currentFilteredNames()[0];
+    const names = currentFilteredNames();
+    const first = names[0];
     let base = `learn.html?mode=${selectedMode}`;
     if (selectedOrder === 'shuffle') base += '&order=shuffle';
     if (selectedDrill === 'weak') base += '&drill=weak';
@@ -125,7 +126,10 @@ function renderModePicker() {
       base += '&repeat=on';
       if (selectedRepeatMax > 0) base += '&rmax=' + selectedRepeatMax;
     }
-    const url = first ? `${base}&w=${encodeURIComponent(first)}` : base;
+    // 默认（全词表、无筛选、顺序）"开始练习"不指定 w：让学习页从 SRS 队列首个未掌握/到点词续练，
+    // 避免每次都从字典序首个 a 词开始。仅在主动缩窄范围或选乱序时从范围顶部开始。
+    const narrowed = listMode === 'hard' || activeLetter !== 'all' || selectedDrill !== 'all' || filterMode !== 'all' || selectedOrder === 'shuffle';
+    const url = (!narrowed && first) ? base : (first ? `${base}&w=${encodeURIComponent(first)}` : base);
     location.href = url;
   });
   // 待复习合计提示
@@ -198,10 +202,63 @@ function clearListMode() {
 function toggleHard() {
   setListMode(listMode === 'hard' ? 'all' : 'hard', true);
 }
+// 标记选项总开关：关闭后，首页隐藏相关词本入口、学习页隐藏标记按钮
+const SHOW_MARKS_KEY = 'gaokao3500.showMarks';
+// 全局「标记体系」功能开关（后台 feature_flags 管理）；未配置时默认开
+function marksFeatureOn() {
+  try {
+    if (window.Sync && typeof Sync.flagOn === 'function' && Sync.flagOn('learning.marks_enabled') === false) return false;
+  } catch (e) {}
+  return true;
+}
+function showMarks() {
+  if (!marksFeatureOn()) return false;
+  try { return localStorage.getItem(SHOW_MARKS_KEY) === '1'; } catch (e) { return false; }
+}
+function applyMarksVisibility() {
+  const globalOn = marksFeatureOn();
+  const row = document.querySelector('.marks-toggle-row');
+  if (row) row.style.display = globalOn ? '' : 'none';
+  const ids = ['hardToggleCard', 'easyCard', 'masteredCard'];
+  if (!globalOn) {
+    ids.forEach(function (id) { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+    return;
+  }
+  const show = showMarks();
+  ids.forEach(function (id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = show ? '' : 'none';
+  });
+}
+// 后台功能开关：按 flag 显隐各模块（在 ensureFlags 解析后调用）
+function applyFeatureGates() {
+  if (!window.Sync || typeof Sync.flagOn !== 'function') return;
+  const on = k => Sync.flagOn(k);
+  const hide = el => { if (el) el.style.display = 'none'; };
+  const show = el => { if (el) el.style.display = ''; };
+  on('content.ukus_enabled') ? show($('#accentToggle')) : hide($('#accentToggle'));   // 英美音切换
+  on('learning.quotes_enabled') ? show($('#quote')) : hide($('#quote'));               // 每日名言
+  on('nav.bookunits_enabled') ? show($('#unitBlock')) : hide($('#unitBlock'));         // 词书进度单元
+  on('nav.sort_enabled') ? show($('#sortRow')) : hide($('#sortRow'));                  // 列表排序
+  on('nav.sort_enabled') ? show($('#orderChips')) : hide($('#orderChips'));            // 练习顺序
+  on('learning.calendar_enabled') ? show($('#calendarCard')) : hide($('#calendarCard')); // 复习日历入口
+  applyMarksVisibility();
+}
 // 重难词本：跨模式标记为重难词的词数
 function hardCount() {
   var c = 0;
   WORDS.forEach(function (w) { var t = tricks[w.name]; if (t && t.flag === 'hard') c++; });
+  return c;
+}
+// 太简单 / 已掌握 词本计数（供首页入口显示）
+function easyCount() {
+  var c = 0;
+  WORDS.forEach(function (w) { var t = tricks[w.name]; if (t && t.flag === 'easy') c++; });
+  return c;
+}
+function masteredCount() {
+  var c = 0;
+  WORDS.forEach(function (w) { var t = tricks[w.name]; if (t && t.flag === 'mastered') c++; });
   return c;
 }
 
@@ -412,6 +469,16 @@ function boot(d) {
       if (listMode === 'hard') ht.checked = true;
       ht.addEventListener('change', function () { setListMode(this.checked ? 'hard' : 'all', true); });
     }
+    // 标记选项总开关：恢复持久化状态 + 监听 + 应用首页入口显隐
+    var mt = document.getElementById('marksToggle');
+    if (mt) {
+      mt.checked = showMarks();
+      mt.addEventListener('change', function () {
+        try { localStorage.setItem(SHOW_MARKS_KEY, this.checked ? '1' : '0'); } catch (e) {}
+        applyMarksVisibility();
+      });
+      applyMarksVisibility();
+    }
     // 词书进度默认折叠（可记忆展开状态）
     try {
       var uc = localStorage.getItem('gaokao3500.unitsCollapsed');
@@ -426,10 +493,16 @@ function boot(d) {
     renderStats(); renderLetters(); renderList(); renderModePicker();
     renderStreak();
     renderUnitProgress(); renderQuote();
+    // 后台功能开关：flags 解析后按配置显隐各模块
+    Sync.ensureFlags().then(applyFeatureGates);
     var wc = document.getElementById('wrongCount');
     if (wc) wc.textContent = wrongCount();
     var hc = document.getElementById('hardCount');
     if (hc) hc.textContent = hardCount();
+    var ec = document.getElementById('easyCount');
+    if (ec) ec.textContent = easyCount();
+    var mc = document.getElementById('masteredCount');
+    if (mc) mc.textContent = masteredCount();
     Sync.onStudy(renderStreak);
   });
 }

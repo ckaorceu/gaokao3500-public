@@ -1143,7 +1143,9 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 .ac-body { margin: 6px 0 8px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
 
 /* 功能开关 */
-.flag-list { display: flex; flex-direction: column; gap: 8px; }
+.flag-list { display: flex; flex-direction: column; gap: 14px; }
+.flag-group { display: flex; flex-direction: column; gap: 8px; }
+.flag-group-title { font-size: 13px; font-weight: 600; color: var(--text); padding: 2px 2px; border-left: 3px solid var(--accent); padding-left: 8px; }
 .flag-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); cursor: pointer; }
 .flag-row small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
 .flag-toggle { width: 42px; height: 24px; }
@@ -1168,6 +1170,13 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 .flag-btn.on.easy { background: #ecfdf3; border-color: #abefc6; color: #067647; }
 .flag-btn.on.hard { background: #fff7ed; border-color: #fed7aa; color: #c2410c; }
 .flag-btn.on.mastered { background: #eef2ff; border-color: #c7d2fe; color: #4338ca; }
+/* 清除标记：默认弱显，有标记时才高亮可点 */
+.flag-btn.clear { color: var(--muted); border-style: dashed; }
+.flag-btn.clear.on { color: #b42318; border-color: #fda29b; background: #fef3f2; }
+.flag-btn.clear:not(.on) { opacity: .5; cursor: not-allowed; }
+/* 空队列提示 */
+.empty-state { text-align: center; padding: 40px 16px; color: var(--muted); line-height: 1.8; }
+.empty-state .link-btn { display: inline-block; margin-top: 10px; }
 
 /* ===== 每词记忆历史曲线 ===== */
 .curve-form { padding: 22px; min-width: 300px; }
@@ -1223,6 +1232,10 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 .switch .slider:before { content: ""; position: absolute; height: 18px; width: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
 .switch input:checked + .slider { background: var(--accent); }
 .switch input:checked + .slider:before { transform: translateX(18px); }
+
+/* ===== 标记选项总开关（首页） ===== */
+.marks-toggle-row { display: flex; align-items: center; gap: 10px; margin: 2px 0 14px; padding: 0 2px; }
+.marks-toggle-label { font-size: 14px; color: var(--muted); }
 
 /* ===== 词书进度：可折叠（默认折叠） ===== */
 .block-head { display: flex; align-items: center; gap: 8px; }

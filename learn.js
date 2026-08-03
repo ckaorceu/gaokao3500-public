@@ -23,11 +23,11 @@ const MODE_LABELS = {
   quizCn: '看中选英',
 };
 const MODE_ICONS = {
-  meaning: 'icons/icon-word-to-meaning.svg',
-  word: 'icons/icon-meaning-to-word.svg',
-  spelling: 'icons/icon-listen-spell.svg',
-  quizEn: 'icons/icon-en-to-cn.svg',
-  quizCn: 'icons/icon-cn-to-en.svg',
+  meaning: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiID8+PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB3aWR0aD0iNjQiIGhlaWdodD0iNjQiPjxwYXRoIGZpbGw9IiM0RjQ2RTUiIHRyYW5zZm9ybT0ibWF0cml4KDEgMCAwIDEgNS4zMzMzMyAxMy4zMzMzKSIgZD0iTTQxLjUxMjMgMy41OTM0UTM1LjAyMTkgLTAuOSAyNi42NjY3IC0wLjlRMTguMzExNCAtMC45IDExLjgyMSAzLjU5MzRRNS4yNzU1IDguMTI0OSAtMC43NzE3IDE4LjIwMzZRLTAuOTAyNCAxOC40MTY3IC0wLjkgMTguNjY2N1EtMC45MDI0IDE4LjkxNjYgLTAuNzcxNyAxOS4xMjk3UTUuMjc1NSAyOS4yMDg1IDExLjgyMSAzMy43NFExOC4zMTE1IDM4LjIzMzMgMjYuNjY2NyAzOC4yMzMzUTM1LjAyMTkgMzguMjMzMyA0MS41MTIzIDMzLjc0UTQ4LjA1NzggMjkuMjA4NCA1NC4xMDUxIDE5LjEyOTdRNTQuMjM1NyAxOC45MTY2IDU0LjIzMzMgMTguNjY2N1E1NC4yMzU3IDE4LjQxNjcgNTQuMTA1MSAxOC4yMDM2UTQ4LjA1NzkgOC4xMjQ5IDQxLjUxMjMgMy41OTM0Wk0xMi44NDU2IDUuMDczM1ExOC44NzM3IDAuOSAyNi42NjY3IDAuOVEzNC40NTk2IDAuOSA0MC40ODc3IDUuMDczM1E0Ni41NjUxIDkuMjgwOCA1Mi4yODE3IDE4LjY2NjdRNDYuNTY1MiAyOC4wNTI1IDQwLjQ4NzcgMzIuMjZRMzQuNDU5NiAzNi40MzMzIDI2LjY2NjcgMzYuNDMzM1ExOC44NzM3IDM2LjQzMzMgMTIuODQ1NiAzMi4yNlE2Ljc2ODIgMjguMDUyNiAxLjA1MTcgMTguNjY2N1E2Ljc2ODEgOS4yODA4IDEyLjg0NTYgNS4wNzMzWiIgZmlsbC1ydWxlPSJldmVub2RkIi8+PGNpcmNsZSBmaWxsPSJub25lIiBzdHJva2U9IiM0RjQ2RTUiIHN0cm9rZS13aWR0aD0iMS44IiB0cmFuc2Zvcm09Im1hdHJpeCgxIDAgMCAxIDIzLjQ2NjcgMjMuNDY2NykiIGN4PSI4LjUzMzMiIGN5PSI4LjUzMzMiIHI9IjguNTMzMyIvPjwvc3ZnPg==',
+  word: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiID8+PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB3aWR0aD0iNjQiIGhlaWdodD0iNjQiPjxwYXRoIGZpbGw9IiM0RjQ2RTUiIHRyYW5zZm9ybT0ibWF0cml4KDEgMCAwIDEgMTAuNjY2NyAxMikiIGQ9Ik0wLjUyNDggMzAuMjcxMlEwLjQ1ODYgMzAuNDA2IDAuNDQwMyAzMC41NTVMLTAuODkzIDQxLjIyMTdRLTAuOTUwNiA0MS41OTQ3IC0wLjcxMDQgNDEuODg1OVEtMC40ODc0IDQyLjE5MDQgLTAuMTExNiA0Mi4yMjY0US0wLjA1NiA0Mi4yMzMzIDAgNDIuMjMzM1EwLjA1NiA0Mi4yMzMzIDAuMTExNiA0Mi4yMjY0TDEwLjc3ODMgNDAuODkzUTEwLjkyNzMgNDAuODc0OCAxMS4wNjIxIDQwLjgwODVRMTEuMTk3MSA0MC43NDI4IDExLjMwMzEgNDAuNjM2NEw0MS45Njk3IDkuOTY5N1E0Mi4yNDQyIDkuNzEwNiA0Mi4yMzMzIDkuMzMzM1E0Mi4yNDQyIDguOTU2IDQxLjk2OTcgOC42OTY5TDMyLjYzNjQgLTAuNjM2NFEzMi4zNzczIC0wLjkxMDkgMzIgLTAuOVEzMS42MjI3IC0wLjkxMDkgMzEuMzYzNiAtMC42MzY0TDAuNjk2OSAzMC4wMzAzUTAuNTkwNSAzMC4xMzYyIDAuNTI0OCAzMC4yNzEyWk0yLjE4ODEgMzEuMDg0N0wxLjAzNjYgNDAuMjk2OEwxMC4yNDg2IDM5LjE0NTJMNDAuMDYwNSA5LjMzMzNMMzIgMS4yNzI4TDIuMTg4MSAzMS4wODQ3WiIgZmlsbC1ydWxlPSJldmVub2RkIi8+PHBhdGggZmlsbD0iIzRGNDZFNSIgdHJhbnNmb3JtPSJtYXRyaXgoMSAwIDAgMSAzOC42NjY3IDE4LjY2NjcpIiBkPSJNOC42MzY0IDcuMzYzNkwwLjYzNjQgLTAuNjM2NFEwLjM3NzMgLTAuOTEwOSAwIC0wLjlRLTAuMzc3MyAtMC45MTA5IC0wLjYzNjQgLTAuNjM2NFEtMC45MTA5IC0wLjM3NzMgLTAuOSAwUS0wLjkxMDkgMC4zNzczIC0wLjYzNjQgMC42MzY0TDcuMzYzNiA4LjYzNjRRNy42MjI3IDguOTEwOSA4IDguOVE4LjM3NzMgOC45MTA5IDguNjM2NCA4LjYzNjRROC45MTA5IDguMzc3MyA4LjkgOFE4LjkxMDkgNy42MjI3IDguNjM2NCA3LjM2MzZaIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4=',
+  spelling: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiID8+PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB3aWR0aD0iNjQiIGhlaWdodD0iNjQiPjxwYXRoIGZpbGw9IiM0RjQ2RTUiIHRyYW5zZm9ybT0ibWF0cml4KDEgMCAwIDEgMTAuNjY2NyAxMC42NjY3KSIgZD0iTS0wLjkgMTguNjY2N0wtMC45IDI0US0wLjkxMDkgMjQuMzc3MyAtMC42MzY0IDI0LjYzNjRRLTAuMzc3MyAyNC45MTA5IDAgMjQuOVEwLjM3NzMgMjQuOTEwOSAwLjYzNjQgMjQuNjM2NFEwLjkxMDkgMjQuMzc3MyAwLjkgMjRMMC45IDE4LjY2NjdRMC45IDE0LjkzNzEgMi40NTk3IDExLjYzNDNRMy45Njk4IDguNDM2MyA2Ljc1NzIgNi4wMTI1UTkuNTQ5NCAzLjU4NDUgMTMuMjQwNiAyLjI2NDFRMTcuMDUzOSAwLjkgMjEuMzMzMyAwLjlRMjUuNjEyOCAwLjkgMjkuNDI2IDIuMjY0MVEzMy4xMTczIDMuNTg0NSAzNS45MDk0IDYuMDEyNVEzOC42OTY4IDguNDM2MyA0MC4yMDcgMTEuNjM0M1E0MS43NjY3IDE0LjkzNzEgNDEuNzY2NyAxOC42NjY3TDQxLjc2NjcgMjRRNDEuNzU1OCAyNC4zNzczIDQyLjAzMDMgMjQuNjM2NFE0Mi4yODk0IDI0LjkxMDkgNDIuNjY2NyAyNC45UTQzLjA0NCAyNC45MTA5IDQzLjMwMzEgMjQuNjM2NFE0My41Nzc1IDI0LjM3NzMgNDMuNTY2NyAyNEw0My41NjY3IDE4LjY2NjdRNDMuNTY2NyAxNC41MzM1IDQxLjgzNDcgMTAuODY1N1E0MC4xNjMxIDcuMzI2IDM3LjA5MDUgNC42NTQyUTM0LjA0MjcgMi4wMDM5IDMwLjAzMjMgMC41NjkyUTI1LjkyNTEgLTAuOSAyMS4zMzMzIC0wLjlRMTYuNzQxNiAtMC45IDEyLjYzNDQgMC41NjkyUTguNjI0IDIuMDAzOSA1LjU3NjEgNC42NTQyUTIuNTAzNSA3LjMyNiAwLjgzMiAxMC44NjU3US0wLjkgMTQuNTMzNSAtMC45IDE4LjY2NjdaIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48cmVjdCBmaWxsPSJub25lIiBzdHJva2U9IiM0RjQ2RTUiIHN0cm9rZS13aWR0aD0iMS44IiB0cmFuc2Zvcm09Im1hdHJpeCgxIDAgMCAxIDggMzMuMzMzMykiIHdpZHRoPSIxMC42NjY3IiBoZWlnaHQ9IjE4LjY2NjciIHJ4PSIyIiByeT0iMiIvPjxyZWN0IGZpbGw9Im5vbmUiIHN0cm9rZT0iIzRGNDZFNSIgc3Ryb2tlLXdpZHRoPSIxLjgiIHRyYW5zZm9ybT0ibWF0cml4KDEgMCAwIDEgNDUuMzMzMyAzMy4zMzMzKSIgd2lkdGg9IjEwLjY2NjciIGhlaWdodD0iMTguNjY2NyIgcng9IjIiIHJ5PSIyIi8+PC9zdmc+',
+  quizEn: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiID8+PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB3aWR0aD0iNjQiIGhlaWdodD0iNjQiPjxyZWN0IGZpbGw9Im5vbmUiIHN0cm9rZT0iIzRGNDZFNSIgc3Ryb2tlLXdpZHRoPSIxLjgiIHRyYW5zZm9ybT0ibWF0cml4KDEgMCAwIDEgOCAxMC42NjY3KSIgd2lkdGg9IjQ4IiBoZWlnaHQ9IjEzLjMzMzMiIHJ4PSIyLjUiIHJ5PSIyLjUiLz48cmVjdCBmaWxsPSJub25lIiBzdHJva2U9IiM0RjQ2RTUiIHN0cm9rZS13aWR0aD0iMS44IiB0cmFuc2Zvcm09Im1hdHJpeCgxIDAgMCAxIDggMzcuMzMzMykiIHdpZHRoPSI0OCIgaGVpZ2h0PSIxMy4zMzMzIiByeD0iMi41IiByeT0iMi41Ii8+PHBhdGggZmlsbD0iIzRGNDZFNSIgdHJhbnNmb3JtPSJtYXRyaXgoMSAwIDAgMSAxNy4zMzMzIDE0LjY2NjcpIiBkPSJNMi42NjY3IDQuMDYwNUwwLjYzNjQgMi4wMzAzUTAuMzc3MyAxLjc1NTggMCAxLjc2NjdRLTAuMzc3MyAxLjc1NTggLTAuNjM2NCAyLjAzMDNRLTAuOTEwOSAyLjI4OTQgLTAuOSAyLjY2NjdRLTAuOTEwOSAzLjA0NCAtMC42MzY0IDMuMzAzMUwyLjAzMDMgNS45Njk3UTIuMjg5NCA2LjI0NDIgMi42NjY3IDYuMjMzM1EzLjA0NCA2LjI0NDIgMy4zMDMxIDUuOTY5N0w4LjYzNjQgMC42MzY0UTguOTEwOSAwLjM3NzMgOC45IDBROC45MTA5IC0wLjM3NzMgOC42MzY0IC0wLjYzNjRROC4zNzczIC0wLjkxMDkgOCAtMC45UTcuNjIyNyAtMC45MTA5IDcuMzYzNiAtMC42MzY0TDIuNjY2NyA0LjA2MDVaIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48ZWxsaXBzZSBmaWxsPSIjRjU5RTBCIiB0cmFuc2Zvcm09Im1hdHJpeCgxIDAgMCAxIDI3LjczMzMgMzkuNzMzMykiIGN4PSI0LjI2NjciIGN5PSI0LjI2NjciIHJ4PSI0LjI2NjciIHJ5PSI0LjI2NjciLz48L3N2Zz4=',
+  quizCn: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiID8+PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB3aWR0aD0iNjQiIGhlaWdodD0iNjQiPjxwYXRoIGZpbGw9IiM0RjQ2RTUiIHRyYW5zZm9ybT0ibWF0cml4KDEgMCAwIDEgMTAuNjY2NyAyNCkiIGQ9Ik0yOS4zMzMzIC0wLjlMMCAtMC45US0wLjM3NzMgLTAuOTEwOSAtMC42MzY0IC0wLjYzNjRRLTAuOTEwOSAtMC4zNzczIC0wLjkgMFEtMC45MTA5IDAuMzc3MyAtMC42MzY0IDAuNjM2NFEtMC4zNzczIDAuOTEwOSAwIDAuOUwyOS4zMzMzIDAuOVEyOS43MTA2IDAuOTEwOSAyOS45Njk3IDAuNjM2NFEzMC4yNDQyIDAuMzc3MyAzMC4yMzMzIDBRMzAuMjQ0MiAtMC4zNzczIDI5Ljk2OTcgLTAuNjM2NFEyOS43MTA2IC0wLjkxMDkgMjkuMzMzMyAtMC45WiIgZmlsbC1ydWxlPSJldmVub2RkIi8+PHBhdGggZmlsbD0iIzRGNDZFNSIgdHJhbnNmb3JtPSJtYXRyaXgoMSAwIDAgMSAzMiAxNikiIGQ9Ik04LjYzNjQgNy4zNjM2TDAuNjM2NCAtMC42MzY0UTAuMzc3MyAtMC45MTA5IDAgLTAuOVEtMC4zNzczIC0wLjkxMDkgLTAuNjM2NCAtMC42MzY0US0wLjkxMDkgLTAuMzc3MyAtMC45IDBRLTAuOTEwOSAwLjM3NzMgLTAuNjM2NCAwLjYzNjRMNi43MjcyIDhMLTAuNjM2NCAxNS4zNjM2US0wLjkxMDkgMTUuNjIyNyAtMC45IDE2US0wLjkxMDkgMTYuMzc3MyAtMC42MzY0IDE2LjYzNjRRLTAuMzc3MyAxNi45MTA5IDAgMTYuOVEwLjM3NzMgMTYuOTEwOSAwLjYzNjQgMTYuNjM2NEw4LjYzNjQgOC42MzY0UTguOTEwOSA4LjM3NzMgOC45IDhROC45MTA5IDcuNjIyNyA4LjYzNjQgNy4zNjM2WiIgZmlsbC1ydWxlPSJldmVub2RkIi8+PHBhdGggZmlsbD0iIzRGNDZFNSIgdHJhbnNmb3JtPSJtYXRyaXgoMSAwIDAgMSAyNCA0MCkiIGQ9Ik0wIDAuOUwyOS4zMzMzIDAuOVEyOS43MTA2IDAuOTEwOSAyOS45Njk3IDAuNjM2NFEzMC4yNDQyIDAuMzc3MyAzMC4yMzMzIDBRMzAuMjQ0MiAtMC4zNzczIDI5Ljk2OTcgLTAuNjM2NFEyOS43MTA2IC0wLjkxMDkgMjkuMzMzMyAtMC45TDAgLTAuOVEtMC4zNzczIC0wLjkxMDkgLTAuNjM2NCAtMC42MzY0US0wLjkxMDkgLTAuMzc3MyAtMC45IDBRLTAuOTEwOSAwLjM3NzMgLTAuNjM2NCAwLjYzNjRRLTAuMzc3MyAwLjkxMDkgMCAwLjlaIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBmaWxsPSIjNEY0NkU1IiB0cmFuc2Zvcm09Im1hdHJpeCgxIDAgMCAxIDI0IDMyKSIgZD0iTTEuMjcyOCA4TDguNjM2NCAwLjYzNjRROC45MTA5IDAuMzc3MyA4LjkgMFE4LjkxMDkgLTAuMzc3MyA4LjYzNjQgLTAuNjM2NFE4LjM3NzMgLTAuOTEwOSA4IC0wLjlRNy42MjI3IC0wLjkxMDkgNy4zNjM2IC0wLjYzNjRMLTAuNjM2NCA3LjM2MzZRLTAuOTEwOSA3LjYyMjcgLTAuOSA4US0wLjkxMDkgOC4zNzczIC0wLjYzNjQgOC42MzY0TDcuMzYzNiAxNi42MzY0UTcuNjIyNyAxNi45MTA5IDggMTYuOVE4LjM3NzMgMTYuOTEwOSA4LjYzNjQgMTYuNjM2NFE4LjkxMDkgMTYuMzc3MyA4LjkgMTZROC45MTA5IDE1LjYyMjcgOC42MzY0IDE1LjM2MzZMMS4yNzI4IDhaIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4=',
 };
 function modeLabelHtml() {
   return '模式：<img class="mode-ico" src="' + (MODE_ICONS[mode] || '') + '" alt=""> ' + (MODE_LABELS[mode] || '看词记义');
@@ -37,6 +37,8 @@ if (!MODE_LABELS[mode]) mode = 'meaning';
 const shuffleOrder = params.get('order') === 'shuffle';
 const weakOnly = params.get('drill') === 'weak';
 const wrongOnly = params.get('drill') === 'wrong';
+const easyOnly = params.get('drill') === 'easy';       // 太简单词本：只练太简单的词（可被取消标记）
+const masteredOnly = params.get('drill') === 'mastered'; // 已掌握词本：只练已掌握的词（可被取消标记）
 let repeatOn = params.get('repeat') === 'on';   // 重复记忆：评不会/模糊自动重练（运行时可按 R 切换）
 const REPEAT_MAX = parseInt(params.get('rmax') || '', 10);  // 上限；NaN 或 -1 表示无限
 const REPEAT_LIMIT_RAW = isNaN(REPEAT_MAX) || REPEAT_MAX < 0 ? Infinity : REPEAT_MAX;
@@ -49,6 +51,18 @@ function srOf(name) { return (SR[mode] && SR[mode][name]) || { l: 0, due: 0, iv:
 function bestLevel(name) { let m = 0; for (const k in SR) { const r = SR[k] && SR[k][name]; if (r && r.l > m) m = r.l; } return m; }
 
 // ---- 标记体系（太简单 / 重难词 / 已掌握） ----
+// 标记选项总开关：关闭后，学习页不再渲染标记按钮、也不应用「太简单退役 / 重难优先」逻辑
+// 全局「标记体系」功能开关（后台 feature_flags 管理）；未配置时默认开
+function marksFeatureOn() {
+  try {
+    if (window.Sync && typeof Sync.flagOn === 'function' && Sync.flagOn('learning.marks_enabled') === false) return false;
+  } catch (e) {}
+  return true;
+}
+function showMarks() {
+  if (!marksFeatureOn()) return false;
+  try { return localStorage.getItem('gaokao3500.showMarks') === '1'; } catch (e) { return false; }
+}
 function flagOf(name) { const t = tricks[name]; return (t && t.flag) || null; }
 function isEasy(name) { return flagOf(name) === 'easy'; }
 function isHard(name) { return flagOf(name) === 'hard'; }
@@ -58,7 +72,7 @@ function setFlag(name, fv) {
   if (!tricks[name]) tricks[name] = {};
   const cur = tricks[name].flag || null;
   tricks[name].flag = (cur === fv) ? null : fv;
-  Sync.saveTricks(tricks);
+  Sync.saveTricksNow(tricks);
   queue = buildQueue();
   if (idx >= queue.length) idx = 0;
   show();
@@ -66,11 +80,24 @@ function setFlag(name, fv) {
 function renderFlagBar(name) {
   const el = document.getElementById('flagBar');
   if (!el) return;
+  if (!showMarks()) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = '';
   const f = flagOf(name);
   el.innerHTML =
-    `<button class="flag-btn${f === 'easy' ? ' on easy' : ''}" onclick="setFlag('${escapeHtml(name)}','easy')">✅ 太简单</button>` +
-    `<button class="flag-btn${f === 'hard' ? ' on hard' : ''}" onclick="setFlag('${escapeHtml(name)}','hard')">⭐ 重难词</button>` +
-    `<button class="flag-btn${f === 'mastered' ? ' on mastered' : ''}" onclick="setFlag('${escapeHtml(name)}','mastered')">🟢 已掌握</button>`;
+    `<button class="flag-btn${f === 'easy' ? ' on easy' : ''}" title="点此标记；已选时再点取消" onclick="setFlag('${escapeHtml(name)}','easy')">✅ 太简单</button>` +
+    `<button class="flag-btn${f === 'hard' ? ' on hard' : ''}" title="点此标记；已选时再点取消" onclick="setFlag('${escapeHtml(name)}','hard')">⭐ 重难词</button>` +
+    `<button class="flag-btn${f === 'mastered' ? ' on mastered' : ''}" title="点此标记；已选时再点取消" onclick="setFlag('${escapeHtml(name)}','mastered')">🟢 已掌握</button>` +
+    `<button class="flag-btn clear${f ? ' on' : ''}" title="清除当前标记" onclick="clearFlag('${escapeHtml(name)}')">✕ 清除标记</button>`;
+}
+// 清除某词的标记（让 three 个开关都能关掉）
+function clearFlag(name) {
+  if (!tricks[name]) tricks[name] = {};
+  if (!tricks[name].flag) return;   // 本就无标记
+  tricks[name].flag = null;
+  Sync.saveTricksNow(tricks);
+  queue = buildQueue();
+  if (idx >= queue.length) idx = 0;
+  show();
 }
 
 // ---- 每词记忆历史曲线 ----
@@ -99,6 +126,7 @@ function curveStats(h) {
   return `<div class="curve-stats">共 <b>${h.length}</b> 次 · 记忆率 <b>${rate}%</b> · ${shape}</div>`;
 }
 function showCurve() {
+  if (window.Sync && typeof Sync.flagOn === 'function' && Sync.flagOn('learning.curve_enabled') === false) return;
   const { w } = queue[idx];
   const h = wordHistory(w.name);
   document.getElementById('curveWord').textContent = w.name;
@@ -117,7 +145,11 @@ function buildQueue() {
   let arr = baseWords.map(w => ({ w, lv: srOf(w.name).l || 0 }));
   if (weakOnly) arr = arr.filter(x => x.lv === 1 || x.lv === 2);
   if (wrongOnly) arr = arr.filter(x => { const b = bestLevel(x.w.name); return b >= 1 && b <= 2; });
-  arr = arr.filter(x => !isEasy(x.w.name));   // 太简单：整体退役，不再出现
+  if (showMarks()) {
+    if (easyOnly) arr = arr.filter(x => isEasy(x.w.name));
+    else if (masteredOnly) arr = arr.filter(x => isMastered(x.w.name));
+    else arr = arr.filter(x => !isEasy(x.w.name));   // 太简单：整体退役，不再出现
+  }
   const now = Date.now();
   arr.sort((a, b) => {
     const ha = isHard(a.w.name) ? 0 : 1, hb = isHard(b.w.name) ? 0 : 1;
@@ -156,6 +188,7 @@ function formatPhon(w) {
 
 // 例句 HTML（主卡片用）：高亮例句中的目标单词（先转义防 XSS，再注入 <mark>）
 function exampleHtml(w) {
+  if (window.Sync && typeof Sync.flagOn === 'function' && Sync.flagOn('content.examples_enabled') === false) return '';
   if (!w.ex) return '';
   let html = escapeHtml(w.ex);
   const term = escapeHtml(w.name);
@@ -170,6 +203,7 @@ function exampleHtml(w) {
 
 // 朗读（真人发音：有道 dictvoice，回退浏览器 TTS）
 function speakWord() {
+  if (window.Sync && typeof Sync.flagOn === 'function' && Sync.flagOn('content.realvoice_enabled') === false) return;
   const { w } = queue[idx];
   if (!w || !w.name) return;
   speakText(w.name, getAccent());
@@ -232,6 +266,14 @@ function renderTrick() {
 }
 
 function show() {
+  if (!queue.length) {
+    const fc = document.getElementById('flashcard');
+    if (fc) fc.innerHTML = '<div class="empty-state">🎉 这个标记本里的词都处理完啦！<br><a class="link-btn" href="index.html">返回首页</a></div>';
+    const ab = document.getElementById('actions'); if (ab) ab.innerHTML = '';
+    const fb = document.getElementById('flagBar'); if (fb) fb.innerHTML = '';
+    const c = document.getElementById('counter'); if (c) c.textContent = '0 / 0';
+    return;
+  }
   const { w, lv } = queue[idx];
   const due = getDue(w.name);
   const dueText = due && Date.now() >= due ? '待复习' : (due ? `下次 ${Math.ceil((due - Date.now()) / DAY)} 天` : '未排程');
@@ -254,8 +296,21 @@ function show() {
     if (ab) { fb = document.createElement('div'); fb.id = 'flagBar'; fb.className = 'flag-bar'; ab.appendChild(fb); }
   }
   renderFlagBar(w.name);
+  applyLearnGates();
 }
 
+// 后台功能开关：按 flag 显隐学习页各模块（每张卡渲染后调用）
+function applyLearnGates() {
+  if (!window.Sync || typeof Sync.flagOn !== 'function') return;
+  const on = k => Sync.flagOn(k);
+  const hide = el => { if (el) el.style.display = 'none'; };
+  const show = el => { if (el) el.style.display = ''; };
+  on('content.ukus_enabled') ? show($('#accentToggle')) : hide($('#accentToggle'));
+  if (!on('content.realvoice_enabled')) $$('.speak').forEach(b => { b.style.display = 'none'; });
+  if (!on('content.examples_enabled')) $$('.ex').forEach(e => { e.style.display = 'none'; });
+  on('content.tricks_enabled') ? show($('#trickPanel')) : hide($('#trickPanel'));
+  on('learning.curve_enabled') ? show($('#curveBtn')) : hide($('#curveBtn'));
+}
 // 模式一：看词记义
 function showMeaning(w) {
   $('#flashcard').innerHTML = `
@@ -420,7 +475,7 @@ function rate(targetLv) {
   hh.push({ t: now, r: newLv >= 3 ? 1 : 0 });
   if (hh.length > 30) hh.shift();
   tricks[w.name].h = hh;
-  Sync.saveTricks(tricks);
+  Sync.saveTricksNow(tricks);
   studiedCount++;
   // 重复记忆：评 不会(L1)/模糊(L2) 且未达上限 -> 本轮稍后重练该词
   if (repeatOn && (newLv === 0 || newLv === 1) && (repeatCount[w.name] || 0) < REPEAT_LIMIT) {
@@ -473,7 +528,7 @@ function saveTrick() {
     homo: $('#trickHomo').value.trim(),
     ex: $('#trickEx').value.trim(),
   });
-  Sync.saveTricks(tricks);
+  Sync.saveTricksNow(tricks);
   closeTrick();
   renderTrick();
 }
@@ -496,10 +551,12 @@ function $$(s) { return Array.from(document.querySelectorAll(s)); }
 // 快捷键
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+  if (!window.Sync || !Sync.flagOn || !Sync.flagOn('nav.keyboard_enabled')) return;
   if (e.key === 'Escape') { closeTrick(); closeCurve(); return; }
   if (!queue[idx]) return;
-  // 标记快捷键（Shift + E/H/G）
+  // 标记快捷键（Shift + E/H/G）；标记选项关闭时不响应
   if (e.shiftKey) {
+    if (!showMarks()) return;
     const k = e.key.toLowerCase();
     if (k === 'e') { e.preventDefault(); setFlag(queue[idx].w.name, 'easy'); return; }
     if (k === 'h') { e.preventDefault(); setFlag(queue[idx].w.name, 'hard'); return; }
@@ -526,10 +583,8 @@ document.addEventListener('keydown', e => {
     }
   }
 });
-// 离开页面防误退：本场已学过词则确认
-window.addEventListener('beforeunload', function (e) {
-  if (studiedCount > 0) { e.preventDefault(); e.returnValue = ''; }
-});
+// 不再拦截 beforeunload：进度已通过 saveSRNow/saveTricksNow 即时落云，
+// 且 pagehide/visibilitychange 会兜底 flush()，无需再弹"更改未保存"确认框。
 // 启动：从云端或本地加载数据后再构建队列并渲染（只执行一次，避免双重 buildQueue/show）
 let leBooted = false;
 function leBoot(d) {
@@ -548,6 +603,8 @@ function leBoot(d) {
     renderStreak();
     Sync.onStudy(renderStreak);
     show();
+    // 后台功能开关：flags 解析后按配置校正静态模块（巧记面板/曲线按钮/英美音切换）
+    Sync.ensureFlags().then(applyLearnGates);
   });
 }
 Sync.onAuth(() => Sync.loadAll().then(leBoot));
