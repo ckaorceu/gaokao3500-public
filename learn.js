@@ -22,6 +22,16 @@ const MODE_LABELS = {
   quizEn: '看英选中',
   quizCn: '看中选英',
 };
+const MODE_ICONS = {
+  meaning: 'icons/icon-word-to-meaning.svg',
+  word: 'icons/icon-meaning-to-word.svg',
+  spelling: 'icons/icon-listen-spell.svg',
+  quizEn: 'icons/icon-en-to-cn.svg',
+  quizCn: 'icons/icon-cn-to-en.svg',
+};
+function modeLabelHtml() {
+  return '模式：<img class="mode-ico" src="' + (MODE_ICONS[mode] || '') + '" alt=""> ' + (MODE_LABELS[mode] || '看词记义');
+}
 let mode = params.get('mode') || 'meaning';
 if (!MODE_LABELS[mode]) mode = 'meaning';
 const shuffleOrder = params.get('order') === 'shuffle';
@@ -226,13 +236,10 @@ function show() {
   const due = getDue(w.name);
   const dueText = due && Date.now() >= due ? '待复习' : (due ? `下次 ${Math.ceil((due - Date.now()) / DAY)} 天` : '未排程');
   $('#posIndicator').textContent = (lv ? `当前 L${lv}` : '未学') + ' · ' + dueText;
-  $('#modeLabel').textContent = '模式：' + (MODE_LABELS[mode] || '看词记义');
+  $('#modeLabel').innerHTML = modeLabelHtml() + (repeatOn ? ' · 重复记忆开' : '');
   $('#counter').textContent = `${idx + 1} / ${queue.length}`;
   const mc = modeLearned(mode);
   $('#learnStats').textContent = `${mc} 已学 · ${modeDue(mode)} 待复习`;
-  if (repeatOn) {
-    $('#modeLabel').textContent = '模式：' + (MODE_LABELS[mode] || '看词记义') + ' · 重复记忆开';
-  }
   renderTrick();
 
   if (mode === 'meaning') showMeaning(w);
@@ -260,7 +267,10 @@ function showMeaning(w) {
     <div class="mn" id="mn" style="display:none">${(w.pos ? w.pos + ' ' : '') + escapeHtml(w.meaning || '')}${exampleHtml(w)}</div>`;
   $('#actions').innerHTML = `
     <button class="primary" id="revealBtn" onclick="revealMeaning()">显示释义</button>
-    <div id="rateWrap" style="display:none;gap:8px">${rateButtons()}</div>`;
+    <div id="rateWrap" style="display:none;gap:10px;flex-direction:column;align-items:center">
+      <div class="rate-prompt">自测：你刚才记住了吗？这决定下次复习时间</div>
+      <div class="rate-row">${rateButtons()}</div>
+    </div>`;
 }
 
 function revealMeaning() {

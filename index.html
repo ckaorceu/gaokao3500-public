@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://bkuvirojzuetweondgrx.supabase.co">
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="dns-prefetch" href="https://dict.youdao.com">
-<link rel="stylesheet" href="style.css?v=21">
+<link rel="stylesheet" href="style.css?v=22">
 </head>
 <body>
 <header class="topbar">
@@ -36,33 +36,44 @@
       <span class="qc-icon">🔴</span>
       <span class="qc-text">错词本 <b id="wrongCount">0</b></span>
     </a>
-    <a class="quick-card" href="#" onclick="toggleHard();return false;">
+    <div class="quick-card toggle-card" id="hardToggleCard">
       <span class="qc-icon">⭐</span>
       <span class="qc-text">重难词本 <b id="hardCount">0</b></span>
-    </a>
+      <label class="switch" title="开启后，下方单词表只显示重难词">
+        <input type="checkbox" id="hardToggle">
+        <span class="slider"></span>
+      </label>
+    </div>
     <a class="quick-card" href="learn.html?mode=meaning&drill=weak">
       <span class="qc-icon">📚</span>
       <span class="qc-text">未掌握词</span>
     </a>
     <a class="quick-card" href="calendar.html">
-      <span class="qc-icon">📅</span>
+      <img class="qc-ico" src="icons/icon-forgetting-curve.svg" alt="复习日历">
       <span class="qc-text">复习日历</span>
     </a>
   </section>
 
   <section class="progress-block">
     <div class="progress-row">
-      <span class="label">总进度</span>
+      <span class="label"><img class="bh-icon" src="icons/icon-progress.svg" alt=""> 总进度</span>
       <div class="bar"><div id="bar-total" class="bar-fill"></div></div>
       <span id="pct-total" class="pct">0%</span>
     </div>
-    <div class="block-label">复习等级分布</div>
+    <div class="block-label"><img class="bh-icon" src="icons/icon-spaced-repetition.svg" alt=""> 复习等级分布</div>
     <div class="levels" id="levels"></div>
   </section>
 
   <section class="unit-block">
-    <div class="block-label">📚 词书进度（按 50 词/单元 · 蓝=历史记忆率，绿=本轮熟记率 · 点单元练习）</div>
-    <div class="unit-list" id="unitProgress"></div>
+    <div class="block-head collapsible-head" id="unitHead" onclick="toggleUnit()" role="button" aria-expanded="false" tabindex="0">
+      <img class="bh-icon" src="icons/icon-book.svg" alt="">
+      <span class="block-label" style="margin:0">词书进度（按 50 词/单元）</span>
+      <span class="collapse-caret" id="unitCaret">▾</span>
+    </div>
+    <div class="unit-collapsible" id="unitCollapsible">
+      <div class="unit-legend">蓝=历史记忆率，绿=本轮熟记率 · 点单元练习</div>
+      <div class="unit-list" id="unitProgress"></div>
+    </div>
   </section>
 
   <section class="mode-picker">
@@ -72,10 +83,10 @@
       <span class="block-label" style="margin:0">单词顺序</span>
       <div class="order-chips" id="orderChips">
         <div class="order-chip active" data-order="seq">顺序</div>
-        <div class="order-chip" data-order="shuffle">乱序</div>
+        <div class="order-chip" data-order="shuffle"><img class="chip-ico" src="icons/icon-order-shuffle.svg" alt="">乱序</div>
       </div>
     </div>
-    <button class="start-btn" id="startBtn">▶ 开始练习</button>
+    <button class="start-btn" id="startBtn"><img class="btn-icon" src="icons/icon-start.svg" alt=""> 开始练习</button>
     <div class="drill-row">
       <span class="block-label" style="margin:0">练习范围</span>
       <div class="order-chips" id="drillChips">
@@ -87,7 +98,7 @@
       <span class="block-label" style="margin:0">重复记忆（评“不会/模糊”自动重练）</span>
       <div class="order-chips" id="repeatChips">
         <div class="drill-chip active" data-repeat="off">关</div>
-        <div class="drill-chip" data-repeat="on">开</div>
+        <div class="drill-chip" data-repeat="on"><img class="chip-ico" src="icons/icon-repeat.svg" alt="">开</div>
       </div>
     </div>
     <div class="drill-row" id="repeatMaxRow" style="display:none">
@@ -137,7 +148,7 @@
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <script defer src="sync.js?v=18" charset="utf-8"></script>
 <script defer src="quotes.js?v=1" charset="utf-8"></script>
-<script defer src="app.js?v=25" charset="utf-8"></script>
+<script defer src="app.js?v=26" charset="utf-8"></script>
 <!-- deploy: turnstile-ui-polish-3 -->
 </body>
 </html>

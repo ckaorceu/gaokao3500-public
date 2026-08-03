@@ -57,11 +57,11 @@ const LIST_PAGE_SIZE = 60;
 let listShown = false;
 let listPage = 0;
 const MODES = [
-  { id: 'meaning', name: '看词记义', desc: '看单词记释义' },
-  { id: 'word', name: '看义记词', desc: '看释义写单词' },
-  { id: 'spelling', name: '听音拼写', desc: '听发音拼写' },
-  { id: 'quizEn', name: '看英选中', desc: '选正确中文' },
-  { id: 'quizCn', name: '看中选英', desc: '选正确英文' },
+  { id: 'meaning', name: '看词记义', desc: '看单词记释义', icon: 'icons/icon-word-to-meaning.svg' },
+  { id: 'word', name: '看义记词', desc: '看释义写单词', icon: 'icons/icon-meaning-to-word.svg' },
+  { id: 'spelling', name: '听音拼写', desc: '听发音拼写', icon: 'icons/icon-listen-spell.svg' },
+  { id: 'quizEn', name: '看英选中', desc: '选正确中文', icon: 'icons/icon-en-to-cn.svg' },
+  { id: 'quizCn', name: '看中选英', desc: '选正确英文', icon: 'icons/icon-cn-to-en.svg' },
 ];
 
 function renderModePicker() {
@@ -71,6 +71,7 @@ function renderModePicker() {
     const lc = modeLearned(m.id), dc = modeDue(m.id);
     const pct = ((lc / total) * 100).toFixed(lc > 0 && lc < total*0.01 ? 1 : 0);
     return `<div class="mode-chip${m.id === selectedMode ? ' active' : ''}" data-mode="${m.id}">
+       <img class="mc-icon" src="${m.icon}" alt="">
        <div class="mc-name">${m.name}</div>
        <div class="mc-desc">${m.desc}</div>
        <div class="mc-meta">已学 ${lc}/${total} · 待复习 ${dc}</div>
@@ -176,10 +177,26 @@ function sortItems(items) {
   if (sortMode === 'reviews') return items.slice().sort((a, b) => reviewCount(b.name) - reviewCount(a.name)); // 复习多→少
   return items;
 }
-function toggleHard() {
-  listMode = (listMode === 'hard') ? 'all' : 'hard';
-  listShown = true; listPage = 0;
+// 重难词本：作为「用户可开关」的筛选项。开启后单词表（及开始练习）只显示重难词，状态持久化。
+function setListMode(m, reveal) {
+  listMode = m;
+  try { localStorage.setItem('gaokao3500.hardFilter', m === 'hard' ? '1' : '0'); } catch (e) {}
+  const cb = document.getElementById('hardToggle');
+  if (cb) cb.checked = (m === 'hard');
+  if (reveal) listShown = true;
+  listPage = 0;
   renderList();
+}
+function clearListMode() {
+  listMode = 'all';
+  try { localStorage.setItem('gaokao3500.hardFilter', '0'); } catch (e) {}
+  const cb = document.getElementById('hardToggle');
+  if (cb) cb.checked = false;
+  listPage = 0;
+  renderList();
+}
+function toggleHard() {
+  setListMode(listMode === 'hard' ? 'all' : 'hard', true);
 }
 // 重难词本：跨模式标记为重难词的词数
 function hardCount() {
@@ -233,9 +250,7 @@ function renderLetters() {
     $$('#letterNav button').forEach(b => b.classList.remove('active'));
     e.target.classList.add('active');
     activeLetter = e.target.dataset.l;
-    listMode = 'all';
-    listPage = 0;
-    renderList();
+    clearListMode();
   });
 }
 
@@ -298,6 +313,18 @@ function wrongCount() {
   return c;
 }
 
+// 词书进度单元折叠：默认折叠，状态持久化
+function toggleUnit() {
+  const el = document.getElementById('unitCollapsible');
+  if (!el) return;
+  const collapsed = el.classList.toggle('collapsed');
+  const caret = document.getElementById('unitCaret');
+  if (caret) caret.classList.toggle('collapsed', collapsed);
+  const head = document.getElementById('unitHead');
+  if (head) head.setAttribute('aria-expanded', String(!collapsed));
+  try { localStorage.setItem('gaokao3500.unitsCollapsed', collapsed ? '1' : '0'); } catch (e) {}
+}
+
 // 词书进度（按单元）：蓝条=历史记忆率，绿条=本轮(熟记)记忆率
 function renderUnitProgress() {
   var el = document.getElementById('unitProgress');
@@ -354,7 +381,7 @@ $('#search').addEventListener('input', e => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(renderList, 120);
 });
-$('#filter').addEventListener('change', e => { filterMode = e.target.value; listMode = 'all'; listPage = 0; renderList(); });
+$('#filter').addEventListener('change', e => { filterMode = e.target.value; clearListMode(); });
 $('#sortChips').addEventListener('click', e => {
   const chip = e.target.closest('.order-chip');
   if (!chip) return;
@@ -378,6 +405,24 @@ function boot(d) {
     Sync.applyWordOverrides(ovr);
     SR = d.sr || {};
     tricks = d.tricks || {};
+    // 重难词本开关：恢复持久化状态
+    try { if (localStorage.getItem('gaokao3500.hardFilter') === '1') listMode = 'hard'; } catch (e) {}
+    var ht = document.getElementById('hardToggle');
+    if (ht) {
+      if (listMode === 'hard') ht.checked = true;
+      ht.addEventListener('change', function () { setListMode(this.checked ? 'hard' : 'all', true); });
+    }
+    // 词书进度默认折叠（可记忆展开状态）
+    try {
+      var uc = localStorage.getItem('gaokao3500.unitsCollapsed');
+      var coll = (uc !== '0');
+      var uEl = document.getElementById('unitCollapsible');
+      var uCaret = document.getElementById('unitCaret');
+      if (coll) { if (uEl) uEl.classList.add('collapsed'); if (uCaret) uCaret.classList.add('collapsed'); }
+      else { if (uEl) uEl.classList.remove('collapsed'); if (uCaret) uCaret.classList.remove('collapsed'); }
+      var uHead = document.getElementById('unitHead');
+      if (uHead) uHead.setAttribute('aria-expanded', String(!coll));
+    } catch (e) {}
     renderStats(); renderLetters(); renderList(); renderModePicker();
     renderStreak();
     renderUnitProgress(); renderQuote();
