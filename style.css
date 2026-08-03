@@ -21,12 +21,6 @@
   --radius: 14px;
   --radius-sm: 10px;
   --radius-lg: 20px;
-
-  /* 统一间距系统（布局优化） */
-  --gap-sm: 12px;
-  --gap: 20px;
-  --gap-lg: 24px;
-  --section-gap: 22px;
 }
 
 * { box-sizing: border-box; }
@@ -85,11 +79,7 @@ html, body {
   max-width: 980px;
   margin: 0 auto;
   padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: var(--section-gap);
 }
-.container > * { margin: 0; }
 
 /* hero */
 .hero { padding: 18px 0 4px; }
@@ -355,7 +345,7 @@ html, body {
 /* word list */
 .word-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 12px;
 }
 .word-card {
@@ -443,20 +433,16 @@ html, body {
 
 /* learn page */
 .learn-wrap {
-  max-width: 760px;
+  max-width: 720px;
   margin: 0 auto;
   padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-lg);
 }
-.learn-wrap > * { margin: 0; }
 
 .flashcard {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 40px 32px;
+  padding: 36px 28px;
   text-align: center;
   box-shadow: var(--shadow);
   min-height: 220px;
@@ -769,22 +755,12 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 .dlg-actions .primary { background: var(--accent-grad); color: white; border-color: transparent; }
 .dlg-actions .primary:hover { background: var(--accent-grad); color: white; box-shadow: 0 6px 16px rgba(47,107,255,.3); }
 
-@media (max-width: 768px) {
-  .container, .learn-wrap, .admin-wrap { padding: 18px; }
-  .word-list { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
-  .mode-picker-chips { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
-  .quick { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
-  .cards { grid-template-columns: repeat(3, 1fr); }
-  .cal-grid { gap: 4px; }
-  .cal-cell { min-height: 54px; }
-}
 @media (max-width: 640px) {
   .container, .learn-wrap { padding: 16px; }
-  .hero h1 { font-size: 26px; }
-  .flashcard { padding: 28px 18px; }
-  .flashcard .w { font-size: 30px; }
-  .word-list { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
-  .quick { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+  .hero h1 { font-size: 22px; }
+  .flashcard { padding: 36px 20px; }
+  .flashcard .w { font-size: 32px; }
+  .word-list { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
 }
 
 /* ===== 登录 / 注册（云端同步） ===== */
@@ -913,7 +889,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 .admin-tab.active { background: var(--accent-grad); color: #fff; border-color: transparent; box-shadow: 0 4px 12px rgba(47,107,255,.26); }
 .admin-tab-body { animation: fade .2s ease; }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
-.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; margin-bottom: 20px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 20px; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 18px; text-align: center; box-shadow: var(--shadow-sm); transition: transform .18s, box-shadow .18s; }
 .card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
 .card-num { font-size: 30px; font-weight: 800; background: var(--accent-grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; font-variant-numeric: tabular-nums; }
@@ -1032,7 +1008,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 }
 .quick {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 14px;
   margin: 0 0 22px;
 }
