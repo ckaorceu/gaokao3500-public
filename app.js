@@ -230,9 +230,13 @@ function applyMarksVisibility() {
     if (el) el.style.display = show ? '' : 'none';
   });
 }
-// 后台功能开关：按 flag 显隐各模块（在 ensureFlags 解析后调用）
+// 后台功能开关：按 flag 显隐各模块
+// 会被调用两次：① 页面加载时用 localStorage 缓存立即应用（防闪现）② 网络结果回来后由 Sync.onFlags 校正
 function applyFeatureGates() {
-  if (!window.Sync || typeof Sync.flagOn !== 'function') return;
+  if (!window.Sync || typeof Sync.flagOn !== 'function') {
+    if (typeof window.__flagsBootDone === 'function') window.__flagsBootDone();
+    return;
+  }
   const on = k => Sync.flagOn(k);
   const hide = el => { if (el) el.style.display = 'none'; };
   const show = el => { if (el) el.style.display = ''; };
@@ -243,6 +247,9 @@ function applyFeatureGates() {
   on('nav.sort_enabled') ? show($('#orderChips')) : hide($('#orderChips'));            // 练习顺序
   on('learning.calendar_enabled') ? show($('#calendarCard')) : hide($('#calendarCard')); // 复习日历入口
   applyMarksVisibility();
+  // 开关已落到各元素的行内 style 上，移除 flags-boot.js 注入的临时 !important 样式，
+  // 否则后续被「打开」的模块会因 !important 而无法显示
+  if (typeof window.__flagsBootDone === 'function') window.__flagsBootDone();
 }
 // 重难词本：跨模式标记为重难词的词数
 function hardCount() {
@@ -493,8 +500,8 @@ function boot(d) {
     renderStats(); renderLetters(); renderList(); renderModePicker();
     renderStreak();
     renderUnitProgress(); renderQuote();
-    // 后台功能开关：flags 解析后按配置显隐各模块
-    Sync.ensureFlags().then(applyFeatureGates);
+    // 列表/统计重渲染后再按开关校正一次（最新值已由文件末尾的 Sync.onFlags 订阅保证）
+    applyFeatureGates();
     var wc = document.getElementById('wrongCount');
     if (wc) wc.textContent = wrongCount();
     var hc = document.getElementById('hardCount');
@@ -506,5 +513,12 @@ function boot(d) {
     Sync.onStudy(renderStreak);
   });
 }
+// 首屏防闪现三步走（避免后台已关闭的模块先显示一下再消失）：
+//   ① flags-boot.js 在 <head> 同步执行，用缓存注入 CSS 抢在首次绘制前隐藏
+//   ② 这里立即用缓存中的开关值应用一次（不等登录态、不等 loadAll），并移除 ① 的临时样式
+//   ③ 网络结果回来后由 Sync.onFlags 再校正一次（缓存与线上不一致时生效）
+applyFeatureGates();
+if (typeof Sync.onFlags === 'function') Sync.onFlags(applyFeatureGates);
+Sync.ensureFlags();
 Sync.onAuth(() => Sync.loadAll().then(boot));
 Sync.loadAll().then(boot);

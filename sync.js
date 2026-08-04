@@ -148,19 +148,40 @@
   function cfReset(action) { try { if (window.turnstile && _cfWidgets[action] != null) window.turnstile.reset(_cfWidgets[action]); } catch (e) {} }
 
   // ---------- 功能开关缓存（来自 feature_flags 表，由后台「🎛️ 运营」管理） ----------
-  var _flags = null;            // { key: enabled }
-  var _flagsReady = false;
-  var _adminByIdent = {};       // 标识符(小写) -> true/false/null(未知)
+  // 为避免「后台已关闭的模块在首屏闪现一下再消失」，开关结果会写入 localStorage：
+  // 脚本加载时先同步读缓存（无需等网络），网络结果回来后覆盖缓存并通知订阅者校正。
+  var FLAGS_KEY = 'gaokao3500.flags.v1';
+  var _flags = readFlagsCache();   // { key: enabled }；无缓存时为 null（此时一律按「开」处理）
+  var _flagsPromise = null;        // 复用同一请求，避免并发调用拿到尚未就绪的空值
+  var _flagCbs = [];
+  var _adminByIdent = {};          // 标识符(小写) -> true/false/null(未知)
+  function readFlagsCache() {
+    try {
+      var o = JSON.parse(localStorage.getItem(FLAGS_KEY) || 'null');
+      return (o && o.v && typeof o.v === 'object') ? o.v : null;
+    } catch (e) { return null; }
+  }
+  function writeFlagsCache(f) {
+    try { localStorage.setItem(FLAGS_KEY, JSON.stringify({ t: Date.now(), v: f })); } catch (e) {}
+  }
+  // 开关订阅：页面用它在网络结果回来后重新应用一次显隐（缓存与线上不一致时校正）
+  function onFlags(cb) { if (typeof cb === 'function') _flagCbs.push(cb); }
+  function emitFlags() {
+    _flagCbs.forEach(function (cb) { try { cb(_flags); } catch (e) { console.error('[Sync] onFlags 回调异常：', e); } });
+  }
   function ensureFlags() {
-    if (_flagsReady) return Promise.resolve(_flags || {});
-    _flagsReady = true;
-    if (!sb) { _flags = {}; return Promise.resolve(_flags); }
-    return sb.rpc('public_feature_flags').then(function (r) {
-      _flags = {};
+    if (_flagsPromise) return _flagsPromise;
+    if (!sb) { _flags = _flags || {}; _flagsPromise = Promise.resolve(_flags); return _flagsPromise; }
+    _flagsPromise = sb.rpc('public_feature_flags').then(function (r) {
+      var next = {};
       var rows = (r && r.data) || r || [];
-      rows.forEach(function (row) { _flags[row.key] = row.enabled; });
+      rows.forEach(function (row) { next[row.key] = row.enabled; });
+      _flags = next;
+      writeFlagsCache(next);
+      emitFlags();
       return _flags;
-    }).catch(function () { _flags = {}; return _flags; });
+    }).catch(function () { _flags = _flags || {}; return _flags; });   // 失败时沿用本地缓存
+    return _flagsPromise;
   }
   // 开关默认「开」（undefined 视为开），只有显式 false 才关
   function flagOn(key) { return !_flags || _flags[key] !== false; }
@@ -237,6 +258,10 @@
       return;
     }
 
+    // 客户端一就绪立刻发起开关请求，与下面的 getSession 并行；
+    // 若放到登录态恢复之后再发，会多串一次网络往返，导致已关闭的模块多显示一会儿。
+    ensureFlags();
+
     // 恢复已有会话（异步）
     function notify() {
       authCbs.forEach(function (cb) {
@@ -260,7 +285,6 @@
       if (user) { fetchUsername(); fetchAdmin(); }
       notify();
     });
-    ensureFlags();   // 预拉取功能开关（含全局人机验证 / 管理员豁免）
     renderAuth();
   }
 
@@ -1131,7 +1155,7 @@
     rpc: rpc, getWordOverride: getWordOverride, saveWordOverride: saveWordOverride, deleteWordOverride: deleteWordOverride,
     onStudy: onStudy, streak: computeStreak,
     // 后台「功能开关」读取接口（feature_flags 表，由后台「🎛️ 运营」管理）
-    flagOn: flagOn, ensureFlags: ensureFlags
+    flagOn: flagOn, ensureFlags: ensureFlags, onFlags: onFlags
   };
 
   if (document.readyState === 'loading') {

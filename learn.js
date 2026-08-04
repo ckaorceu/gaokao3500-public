@@ -300,8 +300,12 @@ function show() {
 }
 
 // 后台功能开关：按 flag 显隐学习页各模块（每张卡渲染后调用）
+// 另外在页面加载时会先用 localStorage 缓存应用一次，网络结果回来后由 Sync.onFlags 校正（防闪现）
 function applyLearnGates() {
-  if (!window.Sync || typeof Sync.flagOn !== 'function') return;
+  if (!window.Sync || typeof Sync.flagOn !== 'function') {
+    if (typeof window.__flagsBootDone === 'function') window.__flagsBootDone();
+    return;
+  }
   const on = k => Sync.flagOn(k);
   const hide = el => { if (el) el.style.display = 'none'; };
   const show = el => { if (el) el.style.display = ''; };
@@ -310,6 +314,8 @@ function applyLearnGates() {
   if (!on('content.examples_enabled')) $$('.ex').forEach(e => { e.style.display = 'none'; });
   on('content.tricks_enabled') ? show($('#trickPanel')) : hide($('#trickPanel'));
   on('learning.curve_enabled') ? show($('#curveBtn')) : hide($('#curveBtn'));
+  // 开关已落到行内 style，移除 flags-boot.js 注入的临时 !important 样式（否则打开的模块显示不出来）
+  if (typeof window.__flagsBootDone === 'function') window.__flagsBootDone();
 }
 // 模式一：看词记义
 function showMeaning(w) {
@@ -602,9 +608,14 @@ function leBoot(d) {
     renderStreak();
     Sync.onStudy(renderStreak);
     show();
-    // 后台功能开关：flags 解析后按配置校正静态模块（巧记面板/曲线按钮/英美音切换）
-    Sync.ensureFlags().then(applyLearnGates);
+    // 卡片渲染后再校正一次（最新开关值已由文件末尾的 Sync.onFlags 订阅保证）
+    applyLearnGates();
   });
 }
+// 首屏防闪现：先用 localStorage 缓存的开关立即应用（不等登录态与 loadAll），
+// 网络结果回来后由 Sync.onFlags 校正。详见 flags-boot.js 的说明。
+applyLearnGates();
+if (typeof Sync.onFlags === 'function') Sync.onFlags(applyLearnGates);
+Sync.ensureFlags();
 Sync.onAuth(() => Sync.loadAll().then(leBoot));
 Sync.loadAll().then(leBoot);
