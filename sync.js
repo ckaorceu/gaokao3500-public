@@ -193,17 +193,9 @@
     var k = (identifier || '').trim().toLowerCase();
     if (!k) return false;
     if (flagOn('security.admin_bypass_captcha') === false) return false;   // 开关关：不豁免
-    if (whitelistHit(k)) return true;                             // 兜底白名单（RPC 不可用时）
     if (_adminByIdent[k] === true) return true;                   // 已确认是管理员
     checkAdminIdent(k);                                           // 未知则异步查（先按非管理员处理）
     return _adminByIdent[k] === true;
-  }
-  function whitelistHit(k) {
-    var list = window.ADMIN_BYPASS_CAPTCHA || [];
-    for (var i = 0; i < list.length; i++) {
-      if ((list[i] || '').trim().toLowerCase() === k) return true;
-    }
-    return false;
   }
   // 按登录标识符异步判定是否为管理员（公开 RPC is_admin_login，供登录前实时判断）
   function checkAdminIdent(k) {
