@@ -5,14 +5,7 @@ let studiedSet = new Set();
 let view = new Date(); view.setDate(1);   // 当前月首日
 let booted = false;
 
-function localDateStr(d) {
-  const dt = new Date(d);
-  return dt.getFullYear() + '-' + ('0' + (dt.getMonth() + 1)).slice(-2) + '-' + ('0' + dt.getDate()).slice(-2);
-}
 function startOfDay(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
 
 // 由 SR 的 due 时间戳，聚合「未来每天待复习的单词」
 function dueWordsByDay() {
@@ -68,11 +61,17 @@ function renderCalendar() {
   }
 }
 
+let _wordMap = null;
+function wordMap() {
+  if (!_wordMap) _wordMap = new Map((window.WORDS || []).map(w => [w.name, w]));
+  return _wordMap;
+}
 function showDay(key, list) {
   const detail = document.getElementById('calDetail');
   if (!list.length) { detail.innerHTML = '<div class="cal-empty">' + key + ' 没有待复习单词。</div>'; return; }
+  const wm = wordMap();
   const items = list.map(name => {
-    const w = (window.WORDS || []).find(x => x.name === name) || { name: name, meaning: '' };
+    const w = wm.get(name) || { name: name, meaning: '' };
     return '<a href="learn.html?mode=meaning&w=' + encodeURIComponent(name) + '"><div class="w">' + escapeHtml(name) + '</div><div class="m">' + (w.meaning ? escapeHtml(w.meaning) : '点击学习') + '</div></a>';
   }).join('');
   detail.innerHTML = '<h3>' + key + ' · 待复习 ' + list.length + ' 个</h3><div class="cal-wordlist">' + items + '</div>';
@@ -90,5 +89,8 @@ function boot(d) {
 document.getElementById('prevM').onclick = () => { view.setMonth(view.getMonth() - 1); renderCalendar(); };
 document.getElementById('nextM').onclick = () => { view.setMonth(view.getMonth() + 1); renderCalendar(); };
 
-Sync.onAuth(() => Sync.loadAll().then(boot));
-Sync.loadAll().then(boot);
+// 加载态：loadAll 期间 grid 为空，先显示占位，renderCalendar 后覆盖
+var _cg = document.getElementById('calGrid');
+if (_cg && !_cg.children.length) _cg.innerHTML = '<div class="cal-empty">日历加载中…</div>';
+Sync.onAuth(() => Sync.loadAll().then(boot).catch(e => { console.error(e); toast('日历加载失败，请刷新重试'); }));
+Sync.loadAll().then(boot).catch(e => { console.error(e); toast('日历加载失败，请刷新重试'); });

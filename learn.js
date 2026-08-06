@@ -80,14 +80,22 @@ function setFlag(name, fv) {
 function renderFlagBar(name) {
   const el = document.getElementById('flagBar');
   if (!el) return;
-  if (!showMarks()) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  if (!showMarks()) { el.style.display = 'none'; el.innerHTML = ''; el.onclick = null; return; }
   el.style.display = '';
   const f = flagOf(name);
   el.innerHTML =
-    `<button class="flag-btn${f === 'easy' ? ' on easy' : ''}" title="点此标记；已选时再点取消" onclick="setFlag('${escapeHtml(name)}','easy')">✅ 太简单</button>` +
-    `<button class="flag-btn${f === 'hard' ? ' on hard' : ''}" title="点此标记；已选时再点取消" onclick="setFlag('${escapeHtml(name)}','hard')">⭐ 重难词</button>` +
-    `<button class="flag-btn${f === 'mastered' ? ' on mastered' : ''}" title="点此标记；已选时再点取消" onclick="setFlag('${escapeHtml(name)}','mastered')">🟢 已掌握</button>` +
-    `<button class="flag-btn clear${f ? ' on' : ''}" title="清除当前标记" onclick="clearFlag('${escapeHtml(name)}')">✕ 清除标记</button>`;
+    `<button class="flag-btn${f === 'easy' ? ' on easy' : ''}" data-name="${escapeHtml(name)}" data-flag="easy" title="点此标记；已选时再点取消">✅ 太简单</button>` +
+    `<button class="flag-btn${f === 'hard' ? ' on hard' : ''}" data-name="${escapeHtml(name)}" data-flag="hard" title="点此标记；已选时再点取消">⭐ 重难词</button>` +
+    `<button class="flag-btn${f === 'mastered' ? ' on mastered' : ''}" data-name="${escapeHtml(name)}" data-flag="mastered" title="点此标记；已选时再点取消">🟢 已掌握</button>` +
+    `<button class="flag-btn clear${f ? ' on' : ''}" data-name="${escapeHtml(name)}" data-flag="clear" title="清除当前标记">✕ 清除标记</button>`;
+  // 事件委托：避免 onclick 字符串拼接导致的撇号词（如 O'Brien）点击失效 / 注入
+  el.onclick = function (e) {
+    const b = e.target.closest('.flag-btn');
+    if (!b) return;
+    const nm = b.getAttribute('data-name');
+    const fl = b.getAttribute('data-flag');
+    if (fl === 'clear') clearFlag(nm); else setFlag(nm, fl);
+  };
 }
 // 清除某词的标记（让 three 个开关都能关掉）
 function clearFlag(name) {
@@ -172,19 +180,7 @@ function buildQueue() {
 }
 let queue = [];
 let idx = 0;
-let studiedCount = 0;   // 本场已评词数，用于离开页面防误退提示
 
-// 音标格式化（优先显示所选英美音，否则两者都显示）
-function formatPhon(w) {
-  const acc = (typeof getAccent === 'function') ? getAccent() : 'us';
-  if (acc === 'uk' && w.ukphone) return '英 /' + w.ukphone + '/';
-  if (acc === 'us' && w.usphone) return '美 /' + w.usphone + '/';
-  const parts = [];
-  if (w.usphone) parts.push('美 /' + w.usphone + '/');
-  if (w.ukphone) parts.push('英 /' + w.ukphone + '/');
-  if (!parts.length && w.phonetic) parts.push('/' + w.phonetic + '/');
-  return parts.join('  ');
-}
 
 // 例句 HTML（主卡片用）：高亮例句中的目标单词（先转义防 XSS，再注入 <mark>）
 function exampleHtml(w) {
@@ -220,20 +216,18 @@ function rateButtons() {
     <button class="rbtn primary" onclick="rate(4)">熟记</button>`;
 }
 
-// 数组洗牌
-function shuffle(arr) {
-  const a = arr.slice();
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
 
-// 从其他词抽 n 个干扰项，拼成 4 选 1（返回 [{label, correct}]）
+// 从其他词随机抽 3 个不重复干扰项（O(3) 抽样，避免每次全量洗牌 3500 词）
 function buildOptions(correctWord, correctText, distractorText) {
-  const pool = shuffle(WORDS.filter(x => x.name !== correctWord.name));
-  const distract = pool.slice(0, 3);
+  const n = WORDS.length, used = new Set(), distract = [];
+  while (distract.length < 3 && used.size < n) {
+    const i = Math.floor(Math.random() * n);
+    if (used.has(i)) continue;
+    used.add(i);
+    const x = WORDS[i];
+    if (x.name === correctWord.name) continue;
+    distract.push(x);
+  }
   const opts = shuffle([
     { text: correctText, correct: true },
     ...distract.map(x => ({ text: distractorText(x), correct: false }))
@@ -481,7 +475,6 @@ function rate(targetLv) {
   if (hh.length > 30) hh.shift();
   tricks[w.name].h = hh;
   Sync.saveTricksNow(tricks);
-  studiedCount++;
   // 重复记忆：评 不会(L1)/模糊(L2) 且未达上限 -> 本轮稍后重练该词
   if (repeatOn && (newLv === 0 || newLv === 1) && (repeatCount[w.name] || 0) < REPEAT_LIMIT) {
     repeatCount[w.name] = (repeatCount[w.name] || 0) + 1;
@@ -497,7 +490,7 @@ function nextCard() {
   } else {
     queue = buildQueue();
     idx = 0;
-    alert('🎉 已完成本轮复习，队列已按掌握度重置。');
+    toast('🎉 已完成本轮复习，队列已按掌握度重置。', 'ok');
     show();
   }
 }
@@ -538,9 +531,6 @@ function saveTrick() {
   renderTrick();
 }
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-}
 function renderStreak() {
   var el = document.getElementById('streak');
   if (!el) return;
@@ -617,5 +607,5 @@ function leBoot(d) {
 applyLearnGates();
 if (typeof Sync.onFlags === 'function') Sync.onFlags(applyLearnGates);
 Sync.ensureFlags();
-Sync.onAuth(() => Sync.loadAll().then(leBoot));
-Sync.loadAll().then(leBoot);
+Sync.onAuth(() => Sync.loadAll().then(leBoot).catch(e => { console.error(e); toast('学习页加载失败，请刷新重试'); }));
+Sync.loadAll().then(leBoot).catch(e => { console.error(e); toast('学习页加载失败，请刷新重试'); });

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>复习日历 · 高考3500词</title>
 <meta name="theme-color" content="#2f6bff">
-<link rel="stylesheet" href="style.css?v=27">
+<link rel="stylesheet" href="style.css?v=29">
 <style>
   .cal-wrap{max-width:760px;margin:0 auto;padding:18px 14px 40px}
   .cal-head{display:flex;align-items:center;justify-content:space-between;margin:8px 0 14px}
@@ -33,6 +33,20 @@
   .cal-wordlist .w{font-weight:600}
   .cal-wordlist .m{font-size:12px;color:#6b7488;margin-top:2px}
   .cal-empty{color:#8a94a6;font-size:13px;padding:8px 0}
+  /* 移动端优化（2026-08-06） */
+  @media (max-width: 640px) {
+    .cal-wrap { padding: 14px 12px 40px; }
+    .cal-head { flex-wrap: wrap; gap: 8px; }
+    .cal-head h2 { font-size: 16px; }
+    .cal-grid { gap: 4px; }
+    .cal-cell { min-height: 48px; padding: 4px; font-size: 12px; }
+    .cal-cell .cnt { font-size: 10px; }
+    .cal-legend { gap: 10px; font-size: 11px; }
+    .cal-wordlist { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+  }
+  @media (max-width: 380px) {
+    .cal-cell { min-height: 42px; }
+  }
 </style>
 </head>
 <body>
@@ -68,6 +82,7 @@
 
 <script defer src="words.js" charset="utf-8"></script>
 <script defer src="config.js?v=5" charset="utf-8"></script>
+<script defer src="common.js?v=1" charset="utf-8"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script defer src="sync.js?v=24" charset="utf-8"></script>
 <script defer src="calendar.js?v=1" charset="utf-8"></script>

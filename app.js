@@ -12,28 +12,32 @@ function saveSR() { Sync.saveSR(SR); }
 function saveTricks() { Sync.saveTricks(tricks); }
 
 function srOf(mode, name) { return (SR[mode] && SR[mode][name]) || { l: 0, due: 0, iv: 0 }; }
-// 跨模式最高等级（用于单词表展示/筛选）
+// 跨模式最高等级（用于单词表展示/筛选）。带缓存：渲染前 invalidateSrCache，渲染内 O(1) 查表
+let _bestCache = null, _revCache = null;
+function invalidateSrCache() { _bestCache = null; _revCache = null; }
+function buildSrCaches() {
+  _bestCache = new Map();
+  _revCache = new Map();
+  const now = Date.now();
+  for (const k in SR) {
+    const mm = SR[k]; if (!mm) continue;
+    for (const n in mm) {
+      const rec = mm[n]; if (!rec) continue;
+      const l = rec.l || 0;
+      if (l > (_bestCache.get(n) || 0)) _bestCache.set(n, l);
+      if (rec.due <= now) _revCache.set(n, (_revCache.get(n) || 0) + 1);
+    }
+  }
+}
 function bestLevel(name) {
-  let m = 0;
-  for (const k in SR) { const r = SR[k] && SR[k][name]; if (r && r.l > m) m = r.l; }
-  return m;
+  if (!_bestCache) buildSrCaches();
+  return _bestCache.get(name) || 0;
 }
 function modeLearned(mode) { const mm = SR[mode] || {}; let c = 0; for (const n in mm) if (mm[n].l > 0) c++; return c; }
 function modeDue(mode) { const now = Date.now(); const mm = SR[mode] || {}; let c = 0; for (const n in mm) if (mm[n].due <= now) c++; return c; }
 function totalLearned() { const s = new Set(); for (const k in SR) for (const n in SR[k]) if (SR[k][n].l > 0) s.add(n); return s.size; }
 function totalDue() { let c = 0; MODES.forEach(m => c += modeDue(m.id)); return c; }
 
-// 音标格式化：优先显示所选英美音，否则两者都显示
-function formatPhon(w) {
-  const acc = (typeof getAccent === 'function') ? getAccent() : 'us';
-  if (acc === 'uk' && w.ukphone) return '英 /' + w.ukphone + '/';
-  if (acc === 'us' && w.usphone) return '美 /' + w.usphone + '/';
-  const parts = [];
-  if (w.usphone) parts.push('美 /' + w.usphone + '/');
-  if (w.ukphone) parts.push('英 /' + w.ukphone + '/');
-  if (!parts.length && w.phonetic) parts.push('/' + w.phonetic + '/');
-  return parts.join('  ');
-}
 // 英美音切换时重渲染词表音标
 window.onAccentChange = function () { try { if (typeof renderList === 'function') renderList(); } catch (e) {} };
 
@@ -159,13 +163,12 @@ function filteredItems() {
   return items;
 }
 
-// 复习次数（跨模式已学次数 + 记忆历史条数）
+// 复习次数（跨模式已学次数 + 记忆历史条数）。复用 _revCache（与 bestLevel 同一次重建）
 function reviewCount(name) {
-  let n = 0;
-  for (const k in SR) { if (SR[k] && SR[k][name]) n++; }
+  if (!_revCache) buildSrCaches();
   const t = tricks[name];
-  if (t && t.h) n += t.h.length;
-  return n;
+  if (t && t.h) return (_revCache.get(name) || 0) + t.h.length;
+  return _revCache.get(name) || 0;
 }
 function aShuffle(arr) {
   const a = arr.slice();
@@ -274,6 +277,7 @@ function currentFilteredNames() {
 }
 
 function renderStats() {
+  invalidateSrCache();
   const total = WORDS.length;
   const learned = totalLearned();
   $('#pct-total').textContent = ((learned / total) * 100).toFixed(1) + '%';
@@ -319,6 +323,7 @@ function renderLetters() {
 }
 
 function renderList() {
+  invalidateSrCache();
   const list = $('#wordList');
   const items = filteredItems();
 
@@ -364,11 +369,6 @@ function renderList() {
   if (more) more.onclick = function () { listPage++; renderList(); };
 }
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  })[c]);
-}
 
 // 错词本：跨模式掌握度落在 L1~L2（学过但没记牢）的词数
 function wrongCount() {
@@ -391,6 +391,7 @@ function toggleUnit() {
 
 // 词书进度（按单元）：蓝条=历史记忆率，绿条=本轮(熟记)记忆率
 function renderUnitProgress() {
+  invalidateSrCache();
   var el = document.getElementById('unitProgress');
   if (!el) return;
   var SIZE = 50, units = [], total = WORDS.length;
@@ -520,5 +521,5 @@ function boot(d) {
 applyFeatureGates();
 if (typeof Sync.onFlags === 'function') Sync.onFlags(applyFeatureGates);
 Sync.ensureFlags();
-Sync.onAuth(() => Sync.loadAll().then(boot));
+Sync.onAuth(() => Sync.loadAll().then(boot).catch(err => { console.error('[app] loadAll 失败', err); toast('数据加载失败，请检查网络后刷新'); }));
 Sync.loadAll().then(boot);

@@ -14,11 +14,6 @@
     trickRawCursor: 0, trickPageStarts: [0], trickSelIds: {}
   };
 
-  function escapeHtml(s) {
-    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
-      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-    }[c]));
-  }
   function fmtDate(s) {
     if (!s) return '—';
     const d = new Date(s);

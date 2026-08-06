@@ -549,14 +549,6 @@
   }
 
   // ---------- 打卡 streak ----------
-  // 把时间戳转成本地日期 'yyyy-mm-dd'
-  function localDateStr(d) {
-    var dt = (d instanceof Date) ? d : new Date(d);
-    var y = dt.getFullYear();
-    var m = ('0' + (dt.getMonth() + 1)).slice(-2);
-    var day = ('0' + dt.getDate()).slice(-2);
-    return y + '-' + m + '-' + day;
-  }
   // 连续学习天数：从今天（今天没学则从昨天）往前数连续有记录的天数
   function computeStreak() {
     var streak = 0;
@@ -1124,11 +1116,6 @@
     });
   }
 
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-    });
-  }
 
   // ---------- 暴露接口 & 自启动 ----------
   // 页面隐藏/关闭时兜底刷新未完成的上云，避免数据丢失

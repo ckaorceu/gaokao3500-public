@@ -1266,3 +1266,113 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 .rate-prompt { font-size: 13px; color: var(--muted); text-align: center; line-height: 1.4; }
 .rate-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 
+/* =========================================================
+   移动端优化（2026-08-06）— 仅 max-width:640px / 380px 生效
+   目标：触摸友好、无横向滚动、关键操作拇指可达
+   ========================================================= */
+@media (max-width: 640px) {
+  /* 通用：更紧凑留白，给内容更多空间；底部留白避免内容被遮挡 */
+  .container, .learn-wrap { padding: 14px 14px 96px; }
+  .topbar { padding: 10px 14px; gap: 8px; }
+  .brand { font-size: 15px; }
+
+  /* 首页：英雄区收紧 */
+  .hero { padding: 6px 0 0; }
+  .hero h1 { font-size: 23px; margin: 8px 0 4px; }
+  .hero .subtitle { font-size: 13px; margin-bottom: 14px; }
+
+  /* 快捷入口：两列、命中区更大 */
+  .quick { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .quick-card { padding: 13px 14px; gap: 10px; }
+  .qc-icon { font-size: 22px; }
+  .qc-text { font-size: 14px; }
+
+  /* 进度块 */
+  .progress-block { padding: 16px; }
+  .levels { flex-wrap: wrap; gap: 6px; }
+
+  /* 单元行：名称+进度在窄屏纵向排布，避免挤压 */
+  .unit-row { grid-template-columns: 1fr auto; gap: 6px 10px; padding: 10px 12px; }
+  .unit-row .unit-bars { grid-column: 1 / -1; min-width: 0; }
+  .unit-row .unit-meta { font-size: 11px; }
+
+  /* 练习模式：网格 3 列（5 个→3+2），窄屏隐藏描述只留图标+名称 */
+  .mode-picker-chips { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .mode-chip { padding: 10px 6px; }
+  .mode-chip .mc-desc, .mode-chip .mc-meta { display: none; }
+
+  /* 顺序 / 范围 chips：整行均分、更大命中区 */
+  .order-chips { gap: 8px; }
+  .order-chip, .drill-chip { flex: 1 1 auto; min-width: 0; justify-content: center; padding: 12px 10px; font-size: 14px; }
+  .start-btn { width: 100%; padding: 15px; font-size: 16px; margin-top: 6px; }
+  .drill-row { flex-wrap: wrap; gap: 8px; }
+  .drill-row .block-label { width: 100%; }
+
+  /* 字母导航：横向滚动，避免挤成一团换行 */
+  .letter-nav { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }
+  .letter-nav button { flex: 0 0 auto; }
+
+  /* 筛选区：纵向堆叠、全宽 */
+  .filters { flex-direction: column; align-items: stretch; gap: 10px; }
+  .filters #search { width: 100%; min-width: 0; font-size: 16px; padding: 12px 14px; }
+  .filters #filter { width: 100%; font-size: 15px; padding: 11px 12px; }
+  .sort-row { flex-wrap: wrap; gap: 8px; }
+  .sort-row .order-chips { width: 100%; }
+  .filters .ghost { width: 100%; padding: 11px; }
+
+  /* 单词表：更紧凑 */
+  .word-list { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .word-card { padding: 12px 13px; }
+  .word-card .name { font-size: 15px; }
+
+  /* ===== 学习页 ===== */
+  .learn-wrap { padding: 12px 12px 110px; }
+  .learn-meta { flex-wrap: wrap; gap: 4px 10px; font-size: 12px; }
+  .flashcard { padding: 28px 16px; min-height: 180px; }
+  .flashcard .w { font-size: 30px; }
+  .flashcard .ph { font-size: 14px; }
+  .flashcard .mn { font-size: 16px; }
+
+  /* 模式切换：横向滚动，五个模式一屏可达 */
+  .mode-tabs { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 3px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .mode-tabs::-webkit-scrollbar { display: none; }
+  .mode-tabs button { flex: 0 0 auto; padding: 9px 14px; }
+
+  /* 答题输入：全宽，避免溢出 */
+  .answer-input { width: 100%; }
+  .answer-input input { width: 100%; max-width: 340px; }
+
+  /* 选择题：更大命中区 */
+  .quiz-opts .opt { padding: 15px 16px; font-size: 15px; }
+
+  /* 主操作（显示答案/下一个）：更大、拇指友好 */
+  .actions { gap: 10px; margin-top: 18px; }
+  .actions button { padding: 14px 12px; font-size: 15px; }
+
+  /* 评级按钮：2×2 网格 */
+  .rateWrap, .rate-row { flex-wrap: wrap; gap: 10px; }
+  .rateWrap .rbtn, .rate-row .rbtn { flex: 1 1 45%; padding: 14px 10px; font-size: 15px; }
+
+  /* 标记按钮：整行均分 */
+  .flag-bar { gap: 8px; }
+  .flag-btn { flex: 1 1 auto; padding: 10px 6px; font-size: 13px; }
+
+  /* 巧记面板 */
+  .trick-panel { padding: 16px; }
+
+  /* 后台：面板更紧凑（表格已可横向滚动） */
+  .admin-wrap { padding: 16px 12px 60px; }
+  .panel { padding: 16px; }
+  .admin-tab { padding: 8px 14px; font-size: 13px; }
+}
+
+/* 超小屏（≤380px）进一步收紧 */
+@media (max-width: 380px) {
+  .hero h1 { font-size: 21px; }
+  .flashcard .w { font-size: 26px; }
+  .quick { grid-template-columns: 1fr; }
+  .word-list { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+  .rateWrap .rbtn, .rate-row .rbtn { flex: 1 1 100%; }
+  .mode-picker-chips { grid-template-columns: repeat(2, 1fr); }
+}
+
