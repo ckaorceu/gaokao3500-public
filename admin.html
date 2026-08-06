@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>站长后台 · 高考3500词</title>
-<link rel="stylesheet" href="style.css?v=27">
+<link rel="stylesheet" href="style.css?v=28">
 </head>
 <body>
 <header class="topbar">
@@ -150,14 +150,37 @@
       <div class="panel">
         <div class="panel-head">
           <h3>巧记内容审核</h3>
-          <select id="trickFilter">
-            <option value="pending">待审核</option>
-            <option value="approved">已通过</option>
-            <option value="rejected">已驳回</option>
-            <option value="">全部</option>
-          </select>
+          <div class="ph-controls">
+            <select id="trickFilter">
+              <option value="pending">待审核</option>
+              <option value="approved">已通过</option>
+              <option value="rejected">已驳回</option>
+              <option value="">全部</option>
+            </select>
+            <label class="tb-inline"><input type="checkbox" id="trickHideEmpty" checked> 隐藏空巧记</label>
+            <label class="tb-inline">每页
+              <select id="trickPageSize">
+                <option value="20">20</option>
+                <option value="50" selected>50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div class="trick-batch" id="trickBatchBar">
+          <label class="tb-selall"><input type="checkbox" id="trickSelAll"> 全选当前页</label>
+          <span class="tb-count" id="trickSelCount">已选 0 项</span>
+          <button class="auth-btn ok" id="trickBatchApprove" disabled>批量通过</button>
+          <button class="auth-btn danger" id="trickBatchReject" disabled>批量驳回</button>
+          <button class="auth-btn" id="trickBatchClear" style="display:none">清除选择</button>
         </div>
         <div id="trickList" class="trick-list"></div>
+        <div class="pager" style="margin-top:10px">
+          <button class="auth-btn" id="trickPrev">上一页</button>
+          <span id="trickPageInfo"></span>
+          <button class="auth-btn" id="trickNext">下一页</button>
+        </div>
       </div>
     </div>
 
@@ -199,6 +222,6 @@
 <script defer src="config.js?v=5" charset="utf-8"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script defer src="sync.js?v=24" charset="utf-8"></script>
-<script defer src="admin.js?v=7" charset="utf-8"></script>
+<script defer src="admin.js?v=9" charset="utf-8"></script>
 </body>
 </html>

@@ -9,7 +9,9 @@
     tab: 'dash',
     users: [], userTotal: 0, userOffset: 0, userLimit: 50, userSearch: '',
     contentSearch: '', onlyOverrides: false, overrides: [], overrideSet: new Set(),
-    editWord: null, userLoading: false, filter: 'all', trickStatus: 'pending'
+    editWord: null, userLoading: false, filter: 'all', trickStatus: 'pending',
+    trickOffset: 0, trickLimit: 50, trickHasMore: false, trickExcludeEmpty: true,
+    trickRawCursor: 0, trickPageStarts: [0], trickSelIds: {}
   };
 
   function escapeHtml(s) {
@@ -101,6 +103,31 @@
     if (next && !next._bound) {
       next._bound = true;
       next.onclick = () => { if (state.userOffset + state.users.length < state.userTotal) { state.userOffset += state.userLimit; loadUsers(); } };
+    }
+    const tPrev = $('#trickPrev'), tNext = $('#trickNext');
+    if (tPrev && !tPrev._bound) {
+      tPrev._bound = true;
+      tPrev.onclick = () => {
+        if (state.trickExcludeEmpty) {
+          if (state.trickPageStarts.length > 1) {
+            state.trickPageStarts.pop();
+            state.trickRawCursor = state.trickPageStarts[state.trickPageStarts.length - 1];
+            loadTricksMod();
+          }
+        } else if (state.trickOffset >= state.trickLimit) {
+          state.trickOffset -= state.trickLimit; loadTricksMod();
+        }
+      };
+    }
+    if (tNext && !tNext._bound) {
+      tNext._bound = true;
+      tNext.onclick = () => {
+        if (state.trickExcludeEmpty) {
+          if (state.trickHasMore) { state.trickPageStarts.push(state.trickRawCursor); loadTricksMod(); }
+        } else if (state.trickHasMore) {
+          state.trickOffset += state.trickLimit; loadTricksMod();
+        }
+      };
     }
   }
 
@@ -651,27 +678,89 @@
   }
 
   // ---------- 巧记内容审核 ----------
+  // 重置巧记分页游标与选择（切换状态/页大小/隐藏空时调用）
+  function resetTrickPage() {
+    state.trickOffset = 0; state.trickRawCursor = 0; state.trickPageStarts = [0]; state.trickSelIds = {};
+  }
+
   function loadTricksMod() {
     const status = state.trickStatus || 'pending';
     $('#trickList').innerHTML = '<div class="empty">加载中…</div>';
-    Sync.rpc('admin_list_tricks', { p_status: status, p_limit: 50, p_offset: 0 }).then(function (rows) {
-      renderTricksMod(rows || []);
+    if (state.trickExcludeEmpty) {
+      // 隐藏空：循环攒够一页非空再显示（纯前端，不改后端）
+      fetchTrickPageExclEmpty(status, state.trickRawCursor).then(function (res) {
+        state.trickRawCursor = res.nextOffset;
+        state.trickHasMore = res.hasMore;
+        renderTricksMod(res.rows, { mode: 'page', pageNo: state.trickPageStarts.length, hasMore: res.hasMore });
+      }).catch(function (e) {
+        $('#trickList').innerHTML = '<div class="empty">加载失败：' + escapeHtml(e.message || e) + '</div>';
+      });
+      return;
+    }
+    const limit = state.trickLimit;
+    const fetchLimit = limit + 1;
+    Sync.rpc('admin_list_tricks', { p_status: status, p_limit: fetchLimit, p_offset: state.trickOffset }).then(function (rows) {
+      rows = rows || [];
+      state.trickHasMore = rows.length > limit;
+      if (state.trickHasMore) rows = rows.slice(0, limit);
+      renderTricksMod(rows, { mode: 'range', hasMore: state.trickHasMore });
     }).catch(function (e) {
       $('#trickList').innerHTML = '<div class="empty">加载失败：' + escapeHtml(e.message || e) + '</div>';
     });
   }
 
-  function renderTricksMod(rows) {
-    if (!rows.length) { $('#trickList').innerHTML = '<div class="empty">该状态下暂无巧记</div>'; return; }
+  // 隐藏空模式下，从 startOffset 起持续拉取，直到攒够一页非空或取尽
+  function fetchTrickPageExclEmpty(status, startOffset) {
+    const limit = state.trickLimit;
+    const fetchLimit = Math.min(limit * 3 + 1, 1000);
+    let offset = startOffset;
+    let collected = [];
+    function step() {
+      return Sync.rpc('admin_list_tricks', { p_status: status, p_limit: fetchLimit, p_offset: offset }).then(function (batch) {
+        const rows = batch || [];
+        const nonEmpty = rows.filter(function (t) {
+          return [t.assoc, t.root, t.homo, t.ex].some(function (s) { return s && String(s).trim(); });
+        });
+        collected = collected.concat(nonEmpty);
+        offset += rows.length;
+        if (rows.length < fetchLimit) { return { rows: collected, hasMore: false, nextOffset: offset }; }
+        if (collected.length >= limit) { collected = collected.slice(0, limit); return { rows: collected, hasMore: true, nextOffset: offset }; }
+        return step();
+      });
+    }
+    return step();
+  }
+
+  function renderTricksMod(rows, meta) {
+    meta = meta || {};
+    const info = $('#trickPageInfo');
+    const prev = $('#trickPrev'), next = $('#trickNext');
+    if (meta.mode === 'page') {
+      if (info) info.textContent = '第 ' + (meta.pageNo || 1) + ' 页 · 本页 ' + rows.length + ' 条' + (meta.hasMore ? '（还有更多）' : '');
+    } else {
+      const from = state.trickOffset + 1, to = state.trickOffset + rows.length;
+      if (info) info.textContent = rows.length ? ('第 ' + from + '-' + to + ' 条' + (state.trickHasMore ? '（还有更多）' : '')) : '第 0 条';
+    }
+    if (prev) prev.disabled = meta.mode === 'page' ? (state.trickPageStarts.length <= 1) : (state.trickOffset <= 0);
+    if (next) next.disabled = !state.trickHasMore;
+
+    if (!rows.length) {
+      var msg = state.trickExcludeEmpty ? '该状态下暂无非空巧记（已隐藏空内容）' : '该状态下暂无巧记';
+      $('#trickList').innerHTML = '<div class="empty">' + msg + '</div>';
+      updateTrickSelUI(); return;
+    }
     $('#trickList').innerHTML = rows.map(function (t) {
       const txt = [t.assoc, t.root, t.homo, t.ex].filter(Boolean).map(function (s) { return escapeHtml(s); }).join(' ｜ ');
-      return '<div class="trick-card" data-id="' + t.id + '">' +
-        '<div class="tc-head"><b>' + escapeHtml(t.word) + '</b> <span class="badge">' + escapeHtml(t.status) + '</span>' +
+      const idAttr = escapeHtml(String(t.id));
+      const checked = state.trickSelIds[t.id] ? ' checked' : '';
+      return '<div class="trick-card" data-id="' + idAttr + '">' +
+        '<div class="tc-head"><label class="tc-check"><input type="checkbox" class="trick-sel" data-id="' + idAttr + '"' + checked + '></label>' +
+        '<b>' + escapeHtml(t.word) + '</b> <span class="badge">' + escapeHtml(t.status) + '</span>' +
         '<span class="tc-meta">' + escapeHtml(t.username || t.email || '') + ' · ' + fmtDate(t.updated_at) + '</span></div>' +
         '<div class="tc-body">' + (txt || '<span class="muted">（空）</span>') + '</div>' +
         '<div class="tc-actions">' +
-          '<button class="auth-btn ok" data-act="approve" data-id="' + t.id + '">通过</button> ' +
-          '<button class="auth-btn danger" data-act="reject" data-id="' + t.id + '">驳回</button>' +
+          '<button class="auth-btn ok" data-act="approve" data-id="' + idAttr + '">通过</button> ' +
+          '<button class="auth-btn danger" data-act="reject" data-id="' + idAttr + '">驳回</button>' +
         '</div></div>';
     }).join('');
     $$('#trickList button[data-act]').forEach(function (b) {
@@ -679,10 +768,68 @@
         const id = parseInt(b.dataset.id, 10);
         const st = b.dataset.act === 'approve' ? 'approved' : 'rejected';
         Sync.rpc('admin_moderate_trick', { p_id: id, p_status: st }).then(function () {
+          delete state.trickSelIds[id];
           toast('已' + (st === 'approved' ? '通过' : '驳回'), 'ok'); loadTricksMod();
         }).catch(function (e) { toast('操作失败：' + (e.message || e), 'err'); });
       };
     });
+    $$('#trickList input.trick-sel').forEach(function (c) {
+      c.onchange = function () {
+        const id = parseInt(c.dataset.id, 10);
+        if (c.checked) state.trickSelIds[id] = true; else delete state.trickSelIds[id];
+        updateTrickSelUI();
+      };
+    });
+    updateTrickSelUI();
+  }
+
+  // 批量审核：复用 admin_moderate_trick；选择跨页累积于 state.trickSelIds
+  function selectedTrickIds() {
+    return Object.keys(state.trickSelIds).map(function (k) { return parseInt(k, 10); });
+  }
+
+  function updateTrickSelUI() {
+    const ids = selectedTrickIds();
+    const countEl = $('#trickSelCount');
+    if (countEl) countEl.textContent = '已选 ' + ids.length + ' 项';
+    const okBtn = $('#trickBatchApprove'), badBtn = $('#trickBatchReject'), clearBtn = $('#trickBatchClear');
+    if (okBtn) okBtn.disabled = ids.length === 0;
+    if (badBtn) badBtn.disabled = ids.length === 0;
+    if (clearBtn) clearBtn.style.display = ids.length ? '' : 'none';
+    const selAll = $('#trickSelAll');
+    const all = $$('#trickList input.trick-sel');
+    if (selAll) selAll.checked = all.length > 0 && all.every(function (c) { return state.trickSelIds[parseInt(c.dataset.id, 10)]; });
+  }
+
+  function batchModerateTricks(status) {
+    const ids = selectedTrickIds();
+    if (!ids.length) { toast('请先勾选要操作的巧记', 'err'); return; }
+    const label = status === 'approved' ? '通过' : '驳回';
+    if (!confirm('确定' + label + '选中的 ' + ids.length + ' 条巧记？')) return;
+    const okBtn = $('#trickBatchApprove'), badBtn = $('#trickBatchReject');
+    if (okBtn) okBtn.disabled = true;
+    if (badBtn) badBtn.disabled = true;
+    toast('正在批量' + label + ' ' + ids.length + ' 条…');
+    // 分批并发（每批 10 个），避免一次性过多 RPC
+    const CHUNK = 10;
+    let i = 0;
+    function stepBatch() {
+      if (i >= ids.length) {
+        toast('已批量' + label + ' ' + ids.length + ' 条巧记', 'ok');
+        state.trickSelIds = {};
+        loadTricksMod();
+        return;
+      }
+      const slice = ids.slice(i, i + CHUNK);
+      i += CHUNK;
+      Promise.all(slice.map(function (id) {
+        return Sync.rpc('admin_moderate_trick', { p_id: id, p_status: status });
+      })).then(function () { stepBatch(); }).catch(function (e) {
+        toast('部分操作失败：' + (e.message || e), 'err');
+        loadTricksMod();
+      });
+    }
+    stepBatch();
   }
 
   // ---------- 运营（公告 + 功能开关） ----------
@@ -769,7 +916,38 @@
     if (ep && !ep._bound) { ep._bound = true; ep.onclick = exportProgress; }
     if (et && !et._bound) { et._bound = true; et.onclick = exportTricks; }
     const tf = $('#trickFilter');
-    if (tf && !tf._bound) { tf._bound = true; tf.onchange = function () { state.trickStatus = tf.value; loadTricksMod(); }; }
+    if (tf && !tf._bound) { tf._bound = true; tf.onchange = function () { state.trickStatus = tf.value; resetTrickPage(); loadTricksMod(); }; }
+    const ps = $('#trickPageSize');
+    if (ps && !ps._bound) {
+      ps._bound = true;
+      ps.onchange = function () { state.trickLimit = parseInt(ps.value, 10) || 50; resetTrickPage(); loadTricksMod(); };
+    }
+    const he = $('#trickHideEmpty');
+    if (he && !he._bound) {
+      he._bound = true;
+      he.onchange = function () { state.trickExcludeEmpty = he.checked; resetTrickPage(); loadTricksMod(); };
+    }
+    const selAll = $('#trickSelAll');
+    if (selAll && !selAll._bound) {
+      selAll._bound = true;
+      selAll.onchange = function () {
+        $$('#trickList input.trick-sel').forEach(function (c) {
+          const id = parseInt(c.dataset.id, 10);
+          c.checked = selAll.checked;
+          if (selAll.checked) state.trickSelIds[id] = true; else delete state.trickSelIds[id];
+        });
+        updateTrickSelUI();
+      };
+    }
+    const ba = $('#trickBatchApprove');
+    if (ba && !ba._bound) { ba._bound = true; ba.onclick = function () { batchModerateTricks('approved'); }; }
+    const bj = $('#trickBatchReject');
+    if (bj && !bj._bound) { bj._bound = true; bj.onclick = function () { batchModerateTricks('rejected'); }; }
+    const bc = $('#trickBatchClear');
+    if (bc && !bc._bound) {
+      bc._bound = true;
+      bc.onclick = function () { state.trickSelIds = {}; $$('#trickList input.trick-sel').forEach(function (c) { c.checked = false; }); updateTrickSelUI(); };
+    }
     const ac = $('#annCreate');
     if (ac && !ac._bound) { ac._bound = true; ac.onclick = createAnnouncement; }
     const uf = $('#userFilter');

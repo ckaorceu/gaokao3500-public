@@ -1128,9 +1128,18 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 .trick-list { display: flex; flex-direction: column; gap: 10px; }
 .trick-card { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; background: var(--surface); }
 .tc-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tc-check { display: inline-flex; align-items: center; cursor: pointer; }
+.tc-check input { width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent); }
 .tc-meta { color: var(--muted); font-size: 12px; margin-left: auto; }
 .tc-body { margin: 6px 0 8px; font-size: 13px; line-height: 1.5; }
 .tc-actions { display: flex; gap: 8px; }
+
+/* 巧记批量审核工具条 */
+.trick-batch { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; margin-bottom: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); position: sticky; top: 0; z-index: 5; }
+.trick-batch .tb-selall { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; user-select: none; }
+.trick-batch .tb-selall input { width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent); }
+.trick-batch .tb-count { color: var(--muted); font-size: 13px; }
+.trick-batch .auth-btn { padding: 6px 12px; }
 
 /* 公告 */
 .ann-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
@@ -1154,6 +1163,10 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 .auth-btn.danger { background: #fff0f0; color: #d23b3b; border-color: #f3c2c2; }
 .auth-btn.danger:hover { background: #ffe2e2; }
 #userFilter, #trickFilter { padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font: inherit; background: var(--bg); color: var(--text); }
+.ph-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.tb-inline { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; user-select: none; color: var(--text); }
+.tb-inline input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent); }
+.tb-inline select { padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); font: inherit; background: var(--bg); color: var(--text); }
 
 /* ===== 标记体系（学习页 · 太简单 / 重难词 / 已掌握） ===== */
 .flag-bar {
