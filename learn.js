@@ -107,6 +107,19 @@ function clearFlag(name) {
   if (idx >= queue.length) idx = 0;
   show();
 }
+// 自动打标：未掌握词（当前模式 SRS 等级 L1~L2）自动标记为重难词，
+// 使其同时出现在「重难词本」；掌握（L>=3）则自动撤下重难标记。
+// 仅当标记功能开启时生效；不覆盖用户主动标记的「太简单 / 已掌握」。
+function applyAutoHard(name, resLv) {
+  if (!marksFeatureOn()) return;                  // 标记功能关闭时不自动打标（重难词本本就隐藏）
+  if (!tricks[name]) tricks[name] = {};
+  const cur = tricks[name].flag || null;
+  if (resLv >= 1 && resLv <= 2) {
+    if (cur !== 'easy' && cur !== 'mastered') tricks[name].flag = 'hard';   // 薄弱 → 自动重难
+  } else if (resLv >= 3) {
+    if (cur === 'hard') tricks[name].flag = null;                            // 已掌握 → 撤下自动产生的重难标记
+  }
+}
 
 // ---- 每词记忆历史曲线 ----
 // 把该词全部模式的记忆记录聚合成时序（t 时间戳, r 1=记得/0=遗忘）
@@ -457,6 +470,8 @@ function rate(targetLv) {
   const { w } = queue[idx];
   let newLv = (typeof targetLv === 'number') ? targetLv : 0;
   if (newLv > 4) newLv = 4;          // 评级体系仅 L1~L4，防御越界（快捷键曾误用 rate(5)）
+  if (newLv < 0) newLv = 0;
+  const resLv = newLv <= 0 ? 1 : newLv;   // 不会 → L1 薄弱；用于「未掌握词自动打标」判定
   const now = Date.now();
   // 遗忘曲线间隔改由 srs-core.js 的 srsInterval() 提供（见 <script src="srs-core.js">）
   if (!SR[mode]) SR[mode] = {};
@@ -474,6 +489,7 @@ function rate(targetLv) {
   hh.push({ t: now, r: recallFlag(newLv) });
   if (hh.length > 30) hh.shift();
   tricks[w.name].h = hh;
+  applyAutoHard(w.name, resLv);      // 未掌握词自动标记为重难词（仅标记功能开启时生效）
   Sync.saveTricksNow(tricks);
   // 重复记忆：评 不会(L1)/模糊(L2) 且未达上限 -> 本轮稍后重练该词
   if (repeatOn && (newLv === 0 || newLv === 1) && (repeatCount[w.name] || 0) < REPEAT_LIMIT) {

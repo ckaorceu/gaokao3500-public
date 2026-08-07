@@ -54,7 +54,7 @@
         <span class="slider"></span>
       </label>
     </div>
-    <a class="quick-card" href="learn.html?mode=meaning&drill=weak">
+    <a class="quick-card" id="weakToggleCard" href="learn.html?mode=meaning&drill=weak">
       <span class="qc-icon">📚</span>
       <span class="qc-text">未掌握词</span>
     </a>
@@ -109,7 +109,7 @@
       <span class="block-label" style="margin:0">练习范围</span>
       <div class="order-chips" id="drillChips">
         <div class="drill-chip active" data-drill="all">全部</div>
-        <div class="drill-chip" data-drill="weak">只练未掌握</div>
+        <div class="drill-chip" id="weakDrillChip" data-drill="weak">只练未掌握</div>
       </div>
     </div>
     <div class="drill-row">
@@ -167,7 +167,7 @@
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <script defer src="sync.js?v=24" charset="utf-8"></script>
 <script defer src="quotes.js?v=1" charset="utf-8"></script>
-<script defer src="app.js?v=33" charset="utf-8"></script>
+<script defer src="app.js?v=34" charset="utf-8"></script>
 <!-- deploy: turnstile-ui-polish-3 -->
 </body>
 </html>

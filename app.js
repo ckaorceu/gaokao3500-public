@@ -222,7 +222,7 @@ function applyMarksVisibility() {
   const globalOn = marksFeatureOn();
   const row = document.querySelector('.marks-toggle-row');
   if (row) row.style.display = globalOn ? '' : 'none';
-  const ids = ['hardToggleCard', 'easyCard', 'masteredCard'];
+  const ids = ['hardToggleCard', 'easyCard', 'masteredCard', 'weakToggleCard', 'weakDrillChip'];
   if (!globalOn) {
     ids.forEach(function (id) { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
     return;
