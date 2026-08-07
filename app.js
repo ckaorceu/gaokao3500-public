@@ -125,7 +125,7 @@ function renderModePicker() {
     const first = names[0];
     let base = `learn.html?mode=${selectedMode}`;
     if (selectedOrder === 'shuffle') base += '&order=shuffle';
-    if (selectedDrill === 'weak') base += '&drill=weak';
+    if (selectedDrill !== 'all') base += '&drill=' + encodeURIComponent(selectedDrill);
     if (selectedRepeat === 'on') {
       base += '&repeat=on';
       if (selectedRepeatMax > 0) base += '&rmax=' + selectedRepeatMax;
@@ -222,7 +222,7 @@ function applyMarksVisibility() {
   const globalOn = marksFeatureOn();
   const row = document.querySelector('.marks-toggle-row');
   if (row) row.style.display = globalOn ? '' : 'none';
-  const ids = ['hardToggleCard', 'easyCard', 'masteredCard', 'weakToggleCard', 'weakDrillChip'];
+  const ids = ['hardToggleCard', 'easyCard', 'masteredCard', 'weakToggleCard'];
   if (!globalOn) {
     ids.forEach(function (id) { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
     return;
