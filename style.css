@@ -822,6 +822,51 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 .auth-msg { font-size: 12px; margin-top: 8px; min-height: 14px; }
 .auth-msg.err { color: #dc2626; }
 .auth-msg.ok { color: var(--l5); }
+
+/* ===== AI 学习报告 / 巧记状态 ===== */
+.report-dlg { padding: 24px; }
+.report-dlg h3 { margin: 0 0 16px; font-size: 17px; }
+.report-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; flex-wrap: wrap; }
+.report-actions button {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 9px 20px;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.report-actions .ghost { color: var(--muted); }
+.report-actions .primary { background: var(--accent-grad); color: #fff; border-color: transparent; }
+.report-actions .primary:hover { background: var(--accent-grad); color: #fff; box-shadow: 0 6px 16px rgba(47,107,255,.3); }
+.report-body { margin-top: 14px; max-height: 60vh; overflow: auto; font-size: 14px; line-height: 1.7; color: var(--text); }
+.report-text { white-space: pre-wrap; }
+.plan-list { list-style: none; padding: 0; margin: 6px 0 0; }
+.plan-list li { margin-bottom: 8px; }
+.plan-list a {
+  display: block;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--text);
+  background: var(--surface);
+  transition: border-color .15s, box-shadow .15s, transform .15s;
+}
+.plan-list a:hover { border-color: var(--accent); box-shadow: var(--shadow); transform: translateY(-1px); }
+.plan-list .reason { display: block; color: var(--muted); font-size: 12px; margin-top: 3px; }
+.trick-status { font-size: 12px; margin-top: 10px; min-height: 14px; line-height: 1.5; }
+.trick-status.err { color: #dc2626; }
+.trick-status.ok { color: var(--l5); }
+.trick-status.loading { color: var(--accent); }
+/* 后台 AI 配置表单 */
+.ai-cfg-form { display: flex; flex-wrap: wrap; gap: 12px 16px; margin-top: 6px; }
+.ai-cfg-form .ai-fld { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); flex: 1 1 220px; min-width: 200px; }
+.ai-cfg-form .ai-fld select,
+.ai-cfg-form .ai-fld input { padding: 9px 11px; border: 1px solid var(--border); border-radius: var(--radius-sm); font: inherit; background: var(--bg); color: var(--text); }
+.ai-cfg-form .ai-fld input:focus,
+.ai-cfg-form .ai-fld select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(79,70,229,.15); }
+.ai-cfg-form .auth-msg { flex-basis: 100%; margin-top: 2px; }
 /* 人机验证（Cloudflare Turnstile）排版优化 */
 .cf-wrap {
   margin: 12px 0 4px;

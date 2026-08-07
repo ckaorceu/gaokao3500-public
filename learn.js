@@ -621,6 +621,58 @@ function saveTrick() {
   renderTrick();
 }
 
+// ---------- AI 巧记 ----------
+function aiGenerateTrick() {
+  if (!queue || !queue[idx]) return;
+  const w = queue[idx].w;
+  // 弹窗未打开时先打开，否则「生成中…/已生成」状态写在隐藏的 dialog 里，页面上看不到反应
+  var dlg = document.getElementById('trickDlg');
+  if (dlg && !dlg.open) { try { openTrick(); } catch (e) {} }
+  var st = document.getElementById('trickStatus');
+  if (!st) return;
+  var token = (typeof Sync !== 'undefined' && Sync.jwt) ? Sync.jwt() : '';
+  if (!token) { st.textContent = '⚠️ 请先登录'; st.className = 'trick-status err'; return; }
+  st.textContent = '✨ AI 生成中…'; st.className = 'trick-status loading';
+  var entry = (typeof WORDS !== 'undefined' && WORDS[w.name]) || {};
+  var phon = entry.phon || '';
+  var mean = entry.mean || entry.def || '';
+  fetch('https://bkuvirojzuetweondgrx.supabase.co/functions/v1/ai_trick', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ word: w.name, phon: phon, mean: mean })
+  }).then(function (r) { return r.json(); }).then(function (d) {
+    if (d.error) { st.textContent = '⚠️ ' + d.error; st.className = 'trick-status err'; return; }
+    var r = d.result || {};
+    if (r.assoc) document.getElementById('trickAssoc').value = r.assoc;
+    if (r.root) document.getElementById('trickRoot').value = r.root;
+    if (r.homo) document.getElementById('trickHomo').value = r.homo;
+    if (r.ex) document.getElementById('trickEx').value = r.ex;
+    st.textContent = '✅ 已生成，可编辑后「保存」或「提交审核」';
+    st.className = 'trick-status ok';
+  }).catch(function (e) { st.textContent = '⚠️ 生成失败：' + (e && e.message ? e.message : e); st.className = 'trick-status err'; });
+}
+
+function submitTrickReview() {
+  if (!queue || !queue[idx]) return;
+  const w = queue[idx].w;
+  var st = document.getElementById('trickStatus');
+  var token = (typeof Sync !== 'undefined' && Sync.jwt) ? Sync.jwt() : '';
+  if (!token) { if (st) { st.textContent = '⚠️ 请先登录'; st.className = 'trick-status err'; } return; }
+  var assoc = document.getElementById('trickAssoc').value.trim();
+  var root = document.getElementById('trickRoot').value.trim();
+  var homo = document.getElementById('trickHomo').value.trim();
+  var ex = document.getElementById('trickEx').value.trim();
+  if (!assoc && !root && !homo && !ex) { if (st) { st.textContent = '⚠️ 内容为空，无法提交'; st.className = 'trick-status err'; } return; }
+  if (st) { st.textContent = '提交审核中…'; st.className = 'trick-status loading'; }
+  Sync.rpc('submit_ai_trick', { p_word: w.name, p_assoc: assoc, p_root: root, p_homo: homo, p_ex: ex })
+    .then(function (r) {
+      if (r && r.error) { if (st) { st.textContent = '⚠️ 提交失败：' + (r.error.message || r.error); st.className = 'trick-status err'; } return; }
+      if (st) { st.textContent = '✅ 已提交审核，审核通过后对所有同学可见'; st.className = 'trick-status ok'; }
+      setTimeout(closeTrick, 1200);
+    })
+    .catch(function (e) { if (st) { st.textContent = '⚠️ 提交失败：' + (e && e.message ? e.message : e); st.className = 'trick-status err'; } });
+}
+
 function renderStreak() {
   var el = document.getElementById('streak');
   if (!el) return;
@@ -682,6 +734,8 @@ function leBoot(d) {
     if ((b = document.getElementById('trickEditBtn'))) b.onclick = openTrick;
     if ((b = document.getElementById('trickCancelBtn'))) b.onclick = closeTrick;
     if ((b = document.getElementById('trickSaveBtn'))) b.onclick = saveTrick;
+    if ((b = document.getElementById('trickAiBtn'))) b.onclick = aiGenerateTrick;
+    if ((b = document.getElementById('trickReviewBtn'))) b.onclick = submitTrickReview;
     if ((b = document.getElementById('curveCloseBtn'))) b.onclick = closeCurve;
     var tf = document.getElementById('trickForm');
     if (tf) tf.addEventListener('submit', function (e) { e.preventDefault(); });

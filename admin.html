@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>站长后台 · 高考3500词</title>
-<link rel="stylesheet" href="style.css?v=29">
+<link rel="stylesheet" href="style.css?v=31">
 </head>
 <body>
 <header class="topbar">
@@ -214,6 +214,33 @@
         <p class="muted">开关即时写入数据库，供前端后续接入（如隐藏巧记 / 例句 / 真人发音）。</p>
         <div id="flagList" class="flag-list"></div>
       </div>
+      <div class="panel">
+        <h3>🤖 AI 服务配置</h3>
+        <p class="muted">配置大模型服务商与密钥后，AI 巧记 / 学习报告 / 复习计划 方可运行。密钥仅存数据库，绝不下发前端或进代码仓库。</p>
+        <div class="ai-cfg-form">
+          <label class="ai-fld">服务商
+            <select id="aiProvider">
+              <option value="deepseek">DeepSeek</option>
+              <option value="openai">OpenAI</option>
+              <option value="qwen">通义千问 (Qwen)</option>
+            </select>
+          </label>
+          <label class="ai-fld">API Key
+            <input id="aiKey" type="password" placeholder="sk-...（留空则保留现有密钥）" autocomplete="off">
+          </label>
+          <label class="ai-fld">模型名
+            <input id="aiModel" placeholder="如 deepseek-chat / gpt-4o-mini / qwen-plus">
+          </label>
+          <label class="ai-fld">Base URL（可选）
+            <input id="aiBaseUrl" placeholder="https://api.deepseek.com （留空用默认）">
+          </label>
+          <div class="auth-msg" id="aiMsg"></div>
+          <div class="dlg-actions">
+            <button class="primary" id="aiSave">保存配置</button>
+            <button class="ghost" id="aiTest">测试连接</button>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 </main>
@@ -222,7 +249,7 @@
 <script defer src="config.js?v=5" charset="utf-8"></script>
 <script defer src="common.js?v=1" charset="utf-8"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script defer src="sync.js?v=24" charset="utf-8"></script>
-<script defer src="admin.js?v=9" charset="utf-8"></script>
+<script defer src="sync.js?v=25" charset="utf-8"></script>
+<script defer src="admin.js?v=10" charset="utf-8"></script>
 </body>
 </html>

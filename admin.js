@@ -827,8 +827,93 @@
     stepBatch();
   }
 
-  // ---------- 运营（公告 + 功能开关） ----------
-  function loadOps() { loadAnnouncements(); loadFlags(); }
+  // ---------- 运营（公告 + 功能开关 + AI 配置） ----------
+  function loadOps() { loadAnnouncements(); loadFlags(); loadAICfg(); }
+
+  function loadAICfg() {
+    Sync.rpc('admin_get_ai_config').then(function (rows) {
+      const c = (rows && rows[0]) || null;
+      if (c) {
+        if (c.provider) $('#aiProvider').value = c.provider;
+        if (c.model) $('#aiModel').value = c.model;
+        if (c.base_url) $('#aiBaseUrl').value = c.base_url;
+        $('#aiKey').placeholder = c.api_key_masked
+          ? ('现有密钥：' + c.api_key_masked + '（留空保留）')
+          : 'sk-...（留空则保留现有密钥）';
+        const msg = $('#aiMsg');
+        msg.className = 'auth-msg ok';
+        msg.textContent = '已配置（' + (c.provider || '?') + '）' + (c.updated_at ? (' · 更新于 ' + fmtDateTime(c.updated_at)) : '');
+      } else {
+        const msg = $('#aiMsg');
+        msg.className = 'auth-msg';
+        msg.textContent = '尚未配置 AI 服务商，AI 功能当前不可用。';
+      }
+    }).catch(function (e) {
+      const msg = $('#aiMsg');
+      msg.className = 'auth-msg err';
+      msg.textContent = '读取失败：' + (e && e.message ? e.message : e);
+    });
+  }
+
+  function saveAICfg() {
+    const provider = $('#aiProvider').value;
+    const api_key = $('#aiKey').value.trim();
+    const model = $('#aiModel').value.trim();
+    const base_url = $('#aiBaseUrl').value.trim();
+    if (!provider || !model) { toast('请填写服务商与模型名', 'err'); return; }
+    const msg = $('#aiMsg');
+    msg.className = 'auth-msg'; msg.textContent = '保存中…';
+    Sync.rpc('admin_set_ai_config', {
+      p_provider: provider,
+      p_api_key: api_key || null,
+      p_model: model,
+      p_base_url: base_url || null
+    }).then(function () {
+      msg.className = 'auth-msg ok';
+      msg.textContent = '已保存 AI 配置';
+      toast('已保存 AI 配置', 'ok');
+      loadAICfg();
+      // 保存后确保 ai.* 功能开关开启，AI 入口才会显示
+      ['ai.tricks_enabled', 'ai.report_enabled', 'ai.plan_enabled'].forEach(function (k) {
+        Sync.rpc('admin_set_feature_flag', { p_key: k, p_enabled: true }).catch(function () {});
+      });
+    }).catch(function (e) {
+      msg.className = 'auth-msg err';
+      msg.textContent = '保存失败：' + (e && e.message ? e.message : e);
+      toast('保存失败：' + (e && e.message ? e.message : e), 'err');
+    });
+  }
+
+  // 直接打 Edge Function 验证：用当前会话 JWT 调 ai_trick，端到端验证密钥可用
+  function testAI() {
+    const msg = $('#aiMsg');
+    const jwt = Sync.jwt && Sync.jwt();
+    if (!jwt) { msg.className = 'auth-msg err'; msg.textContent = '未登录或会话已失效，无法测试'; return; }
+    msg.className = 'auth-msg'; msg.textContent = '正在测试连接…';
+    const url = (window.APP_CONFIG && window.APP_CONFIG.SUPABASE_URL) + '/functions/v1/ai_trick';
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + jwt },
+      body: JSON.stringify({ word: 'apple' })
+    }).then(function (r) {
+      return r.json().then(function (j) { return { status: r.status, body: j || {} }; });
+    }).then(function (res) {
+      if (res.status === 200 && res.body && res.body.ok) {
+        msg.className = 'auth-msg ok';
+        msg.textContent = '连接成功 ✅ AI 已可正常生成巧记。';
+        toast('AI 连接测试成功', 'ok');
+      } else if (res.body && res.body.error && /未配置/.test(res.body.error)) {
+        msg.className = 'auth-msg err';
+        msg.textContent = 'AI 未配置：请先保存 API Key 后再测试。';
+      } else {
+        msg.className = 'auth-msg err';
+        msg.textContent = '测试失败（' + res.status + '）：' + ((res.body && (res.body.error || res.body.message)) || '未知错误');
+      }
+    }).catch(function (e) {
+      msg.className = 'auth-msg err';
+      msg.textContent = '测试请求异常：' + (e && e.message ? e.message : e);
+    });
+  }
 
   function loadAnnouncements() {
     Sync.rpc('admin_list_announcements').then(function (rows) {
@@ -945,6 +1030,9 @@
     }
     const ac = $('#annCreate');
     if (ac && !ac._bound) { ac._bound = true; ac.onclick = createAnnouncement; }
+    const aiS = $('#aiSave'), aiT = $('#aiTest');
+    if (aiS && !aiS._bound) { aiS._bound = true; aiS.onclick = saveAICfg; }
+    if (aiT && !aiT._bound) { aiT._bound = true; aiT.onclick = testAI; }
     const uf = $('#userFilter');
     if (uf && !uf._bound) { uf._bound = true; uf.onchange = function () { state.filter = uf.value; state.userOffset = 0; loadUsers(); }; }
     const us = $('#userSearch');

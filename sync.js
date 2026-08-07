@@ -23,6 +23,7 @@
 
   var sb = null;          // supabase client
   var user = null;        // 当前登录用户
+  var accessToken = '';   // 当前会话 JWT（供 Edge Function 鉴权）
   var authCbs = [];       // onAuth 回调列表
   var studyCbs = [];      // onStudy 回调列表（打卡实时更新）
   var studyDates = (typeof Set !== 'undefined') ? new Set() : {}; // 学习过的本地日期集合 'yyyy-mm-dd'
@@ -264,6 +265,7 @@
 
     sb.auth.getSession().then(function (res) {
       user = (res.data && res.data.session) ? res.data.session.user : null;
+      accessToken = (res.data && res.data.session) ? res.data.session.access_token : '';
       renderAuth();
       // onAuthStateChange 不会在初始订阅时触发，故恢复会话后主动通知一次，
       // 让 app.js / learn.js 拉取云端数据（解决回头登录用户只看到本地旧数据的问题）
@@ -273,6 +275,7 @@
     // 登录态变化：更新 UI 并通知订阅者（app.js / learn.js 会重新拉取并渲染）
     sb.auth.onAuthStateChange(function (_event, session) {
       user = session ? session.user : null;
+      accessToken = session ? session.access_token : '';
       renderAuth();
       if (user) { fetchUsername(); fetchAdmin(); }
       notify();
@@ -1132,7 +1135,7 @@
     changePassword: changePassword, usernameAvailable: usernameAvailable,
     amIAdmin: amIAdmin, loadWordOverrides: loadWordOverrides, listWordOverrides: listWordOverrides, applyWordOverrides: applyWordOverrides,
     rpc: rpc, getWordOverride: getWordOverride, saveWordOverride: saveWordOverride, deleteWordOverride: deleteWordOverride,
-    onStudy: onStudy, streak: computeStreak,
+    onStudy: onStudy, streak: computeStreak, jwt: function () { return accessToken; },
     // 后台「功能开关」读取接口（feature_flags 表，由后台「🎛️ 运营」管理）
     flagOn: flagOn, ensureFlags: ensureFlags, onFlags: onFlags
   };
