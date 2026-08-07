@@ -136,6 +136,7 @@
     $('#tabExport').style.display = tab === 'export' ? '' : 'none';
     $('#tabTricks').style.display = tab === 'tricks' ? '' : 'none';
     $('#tabOps').style.display = tab === 'ops' ? '' : 'none';
+    $('#tabAI').style.display = tab === 'ai' ? '' : 'none';
     if (tab === 'dash') loadDash();
     else if (tab === 'users') loadUsers();
     else if (tab === 'content') initContent();
@@ -143,6 +144,7 @@
     else if (tab === 'export') initExport();
     else if (tab === 'tricks') loadTricksMod();
     else if (tab === 'ops') loadOps();
+    else if (tab === 'ai') { loadAICfg(); loadAIUsage(); }
   }
 
   // ---------- 数据看板 ----------
@@ -827,8 +829,31 @@
     stepBatch();
   }
 
-  // ---------- 运营（公告 + 功能开关 + AI 配置） ----------
-  function loadOps() { loadAnnouncements(); loadFlags(); loadAICfg(); }
+  // ---------- 运营（公告 + 功能开关） ----------
+  function loadOps() { loadAnnouncements(); loadFlags(); }
+
+  function loadAIUsage() {
+    const body = $('#aiUsageBody');
+    if (!body) return;
+    body.innerHTML = '<tr><td colspan="4" class="empty">加载中…</td></tr>';
+    Sync.rpc('admin_ai_usage', { p_limit: 30 }).then(function (rows) {
+      rows = rows || [];
+      if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="4" class="empty">暂无 AI 使用记录</td></tr>';
+        return;
+      }
+      body.innerHTML = rows.map(function (r) {
+        return '<tr>' +
+          '<td>' + escapeHtml(r.email || '(无邮箱)') + '</td>' +
+          '<td>' + escapeHtml(r.username || '') + '</td>' +
+          '<td>' + (r.today_cnt != null ? r.today_cnt : 0) + '</td>' +
+          '<td>' + (r.total_cnt != null ? r.total_cnt : 0) + '</td>' +
+          '</tr>';
+      }).join('');
+    }).catch(function (e) {
+      body.innerHTML = '<tr><td colspan="4" class="empty">加载失败：' + escapeHtml(e && e.message ? e.message : e) + '</td></tr>';
+    });
+  }
 
   function loadAICfg() {
     Sync.rpc('admin_get_ai_config').then(function (rows) {
@@ -837,6 +862,8 @@
         if (c.provider) $('#aiProvider').value = c.provider;
         if (c.model) $('#aiModel').value = c.model;
         if (c.base_url) $('#aiBaseUrl').value = c.base_url;
+        $('#aiDailyLimit').value = (c.user_daily_limit != null) ? c.user_daily_limit : 30;
+        $('#aiAdminUnlimited').checked = (c.admin_unlimited !== false);
         $('#aiKey').placeholder = c.api_key_masked
           ? ('现有密钥：' + c.api_key_masked + '（留空保留）')
           : 'sk-...（留空则保留现有密钥）';
@@ -860,6 +887,9 @@
     const api_key = $('#aiKey').value.trim();
     const model = $('#aiModel').value.trim();
     const base_url = $('#aiBaseUrl').value.trim();
+    let daily = parseInt($('#aiDailyLimit').value, 10);
+    if (isNaN(daily) || daily < 0) daily = 30;
+    const adminUnlimited = !!$('#aiAdminUnlimited').checked;
     if (!provider || !model) { toast('请填写服务商与模型名', 'err'); return; }
     const msg = $('#aiMsg');
     msg.className = 'auth-msg'; msg.textContent = '保存中…';
@@ -867,7 +897,9 @@
       p_provider: provider,
       p_api_key: api_key || null,
       p_model: model,
-      p_base_url: base_url || null
+      p_base_url: base_url || null,
+      p_user_daily_limit: daily,
+      p_admin_unlimited: adminUnlimited
     }).then(function () {
       msg.className = 'auth-msg ok';
       msg.textContent = '已保存 AI 配置';
@@ -1030,9 +1062,10 @@
     }
     const ac = $('#annCreate');
     if (ac && !ac._bound) { ac._bound = true; ac.onclick = createAnnouncement; }
-    const aiS = $('#aiSave'), aiT = $('#aiTest');
+    const aiS = $('#aiSave'), aiT = $('#aiTest'), aiU = $('#aiUsageRefresh');
     if (aiS && !aiS._bound) { aiS._bound = true; aiS.onclick = saveAICfg; }
     if (aiT && !aiT._bound) { aiT._bound = true; aiT.onclick = testAI; }
+    if (aiU && !aiU._bound) { aiU._bound = true; aiU.onclick = loadAIUsage; }
     const uf = $('#userFilter');
     if (uf && !uf._bound) { uf._bound = true; uf.onchange = function () { state.filter = uf.value; state.userOffset = 0; loadUsers(); }; }
     const us = $('#userSearch');

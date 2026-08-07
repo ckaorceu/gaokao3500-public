@@ -647,7 +647,9 @@ function aiGenerateTrick() {
     if (r.root) document.getElementById('trickRoot').value = r.root;
     if (r.homo) document.getElementById('trickHomo').value = r.homo;
     if (r.ex) document.getElementById('trickEx').value = r.ex;
-    st.textContent = '✅ 已生成，可编辑后「保存」或「提交审核」';
+    var q = d.quota;
+    var hint = (q && q.limit) ? ('（今日 ' + q.used + '/' + q.limit + '）') : (q && q.admin ? '（管理员不限次）' : '');
+    st.textContent = '✅ 已生成' + hint + '，可编辑后「保存」或「提交审核」';
     st.className = 'trick-status ok';
   }).catch(function (e) { st.textContent = '⚠️ 生成失败：' + (e && e.message ? e.message : e); st.className = 'trick-status err'; });
 }

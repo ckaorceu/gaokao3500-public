@@ -30,6 +30,7 @@
       <button class="admin-tab" data-tab="analytics">📈 分析</button>
       <button class="admin-tab" data-tab="tricks">✅ 巧记审核</button>
       <button class="admin-tab" data-tab="export">📤 导出</button>
+      <button class="admin-tab" data-tab="ai">🤖 AI 管理</button>
       <button class="admin-tab" data-tab="ops">🎛️ 运营</button>
     </nav>
 
@@ -214,6 +215,9 @@
         <p class="muted">开关即时写入数据库，供前端后续接入（如隐藏巧记 / 例句 / 真人发音）。</p>
         <div id="flagList" class="flag-list"></div>
       </div>
+    </div>
+    <!-- AI 管理 -->
+    <div id="tabAI" class="admin-tab-body" style="display:none">
       <div class="panel">
         <h3>🤖 AI 服务配置</h3>
         <p class="muted">配置大模型服务商与密钥后，AI 巧记 / 学习报告 / 复习计划 方可运行。密钥仅存数据库，绝不下发前端或进代码仓库。</p>
@@ -234,11 +238,29 @@
           <label class="ai-fld">Base URL（可选）
             <input id="aiBaseUrl" placeholder="https://api.deepseek.com （留空用默认）">
           </label>
+          <label class="ai-fld">普通用户每日 AI 次数上限
+            <input id="aiDailyLimit" type="number" min="0" max="9999" step="1" placeholder="30">
+            <small class="muted">0 = 不限制；管理员默认不受此限</small>
+          </label>
+          <label class="ai-fld chk"><input type="checkbox" id="aiAdminUnlimited" checked> 管理员不受次数限制</label>
           <div class="auth-msg" id="aiMsg"></div>
           <div class="dlg-actions">
             <button class="primary" id="aiSave">保存配置</button>
             <button class="ghost" id="aiTest">测试连接</button>
           </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <h3>📊 AI 用量统计（今日）</h3>
+          <button class="auth-btn" id="aiUsageRefresh">刷新</button>
+        </div>
+        <p class="muted">区分<strong>普通用户</strong>（受每日上限约束）与<strong>管理员</strong>（默认不受限）。计数含 AI 巧记与学习报告/计划的真实调用。</p>
+        <div class="table-wrap">
+          <table class="admin-table">
+            <thead><tr><th>邮箱</th><th>用户名</th><th>今日次数</th><th>累计次数</th></tr></thead>
+            <tbody id="aiUsageBody"><tr><td colspan="4" class="empty">加载中…</td></tr></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -250,6 +272,6 @@
 <script defer src="common.js?v=1" charset="utf-8"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script defer src="sync.js?v=25" charset="utf-8"></script>
-<script defer src="admin.js?v=10" charset="utf-8"></script>
+<script defer src="admin.js?v=12" charset="utf-8"></script>
 </body>
 </html>
