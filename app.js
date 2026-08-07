@@ -465,6 +465,16 @@ let booted = false;
 function boot(d) {
   if (booted) return;
   booted = true;
+  // CSP 兼容：unitHead 内联 onclick 改为 JS 绑定（严格 CSP 下内联事件会被拦截）
+  (function () {
+    var uh = document.getElementById('unitHead');
+    if (uh) {
+      uh.onclick = toggleUnit;
+      uh.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleUnit(); }
+      });
+    }
+  })();
   // 应用后台「内容管理」对词库的覆盖（影响展示与测验）
   Sync.loadWordOverrides().then(function (ovr) {
     Sync.applyWordOverrides(ovr);

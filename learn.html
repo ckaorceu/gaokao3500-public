@@ -41,23 +41,23 @@
   <section class="trick-panel" id="trickPanel">
     <div class="trick-head">
       <span>💡 巧记方法</span>
-      <button class="link-btn" id="curveBtn" onclick="showCurve()">📈 曲线</button>
-      <button class="link-btn" onclick="openTrick()">编辑</button>
+      <button class="link-btn" id="curveBtn">📈 曲线</button>
+      <button class="link-btn" id="trickEditBtn">编辑</button>
     </div>
     <div class="trick-body" id="trickBody"></div>
   </section>
 </main>
 
 <dialog id="trickDlg">
-  <form method="dialog" class="trick-form" onsubmit="return false">
+  <form method="dialog" class="trick-form" id="trickForm">
     <h3>编辑巧记 — <span id="trickWordName"></span></h3>
     <label class="tf"><span>联想记忆</span><input id="trickAssoc" placeholder="abandon = a(一个)+band(乐队)+on(上) → 一个乐队在演出时被抛弃"></label>
     <label class="tf"><span>词根词缀</span><input id="trickRoot" placeholder="un- 否定；-able 能…的；bio- 生命"></label>
     <label class="tf"><span>谐音记忆</span><input id="trickHomo" placeholder="ambulance 谐音「俺不能死」→ 救护车"></label>
     <label class="tf"><span>例句</span><input id="trickEx" placeholder="He abandoned his car in the snow. 他把车丢在雪里。"></label>
     <div class="dlg-actions">
-      <button type="button" class="ghost" onclick="closeTrick()">取消</button>
-      <button type="button" class="primary" onclick="saveTrick()">保存</button>
+      <button type="button" class="ghost" id="trickCancelBtn">取消</button>
+      <button type="button" class="primary" id="trickSaveBtn">保存</button>
     </div>
   </form>
 </dialog>
@@ -67,7 +67,7 @@
     <h3><img class="bh-icon" src="icons/icon-forgetting-curve.svg" alt=""> 记忆曲线 — <span id="curveWord"></span></h3>
     <div id="curveBody"></div>
     <div class="dlg-actions">
-      <button type="button" class="primary" onclick="closeCurve()">关闭</button>
+      <button type="button" class="primary" id="curveCloseBtn">关闭</button>
     </div>
   </div>
 </dialog>
@@ -78,6 +78,6 @@
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script defer src="sync.js?v=24" charset="utf-8"></script>
 <script defer src="srs-core.js" charset="utf-8"></script>
-<script defer src="learn.js?v=35" charset="utf-8"></script>
+<script defer src="learn.js?v=36" charset="utf-8"></script>
 </body>
 </html>

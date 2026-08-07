@@ -675,6 +675,17 @@ let leBooted = false;
 function leBoot(d) {
   if (leBooted) return;
   leBooted = true;
+  // CSP 兼容：内联 onclick 改为 JS 绑定（严格 CSP 下内联事件会被拦截）
+  (function () {
+    var b;
+    if ((b = document.getElementById('curveBtn'))) b.onclick = showCurve;
+    if ((b = document.getElementById('trickEditBtn'))) b.onclick = openTrick;
+    if ((b = document.getElementById('trickCancelBtn'))) b.onclick = closeTrick;
+    if ((b = document.getElementById('trickSaveBtn'))) b.onclick = saveTrick;
+    if ((b = document.getElementById('curveCloseBtn'))) b.onclick = closeCurve;
+    var tf = document.getElementById('trickForm');
+    if (tf) tf.addEventListener('submit', function (e) { e.preventDefault(); });
+  })();
   // 应用后台「内容管理」对词库的覆盖（影响展示与测验）
   Sync.loadWordOverrides().then(function (ovr) {
     Sync.applyWordOverrides(ovr);
