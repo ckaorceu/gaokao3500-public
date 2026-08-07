@@ -191,6 +191,80 @@ function buildQueue() {
   }
   return arr;
 }
+
+// 错词本列表视图（drill=wrong 且无指定词 w 时进入，先列清单再选模式纠错）
+let listMode = '';   // '' = 全部模式（bestLevel L1~L2）；'meaning'/'word'/... = 该模式下 L1~L2 的错词
+let wrongPage = 0;   // 错词本列表分页当前页（每页 20 条）
+function wrongListFilter(w) {
+  if (listMode === '') { const b = bestLevel(w.name); return b >= 1 && b <= 2; }
+  const r = (SR[listMode] && SR[listMode][w.name]) || { l: 0 };
+  return r.l >= 1 && r.l <= 2;
+}
+function showCurveFor(name) {
+  if (window.Sync && typeof Sync.flagOn === 'function' && Sync.flagOn('learning.curve_enabled') === false) return;
+  const h = wordHistory(name);
+  document.getElementById('curveWord').textContent = name;
+  document.getElementById('curveBody').innerHTML = buildCurveSvg(h) + curveStats(h);
+  document.getElementById('curveDlg').showModal();
+}
+function renderWrongList() {
+  const fc = $('#flashcard'), act = $('#actions'), tp = $('#trickPanel');
+  if (fc) fc.style.display = 'none';
+  if (act) act.style.display = 'none';
+  if (tp) tp.style.display = 'none';
+  const wl = $('#wrongList');
+  wl.hidden = false;
+  const curveOn = !(window.Sync && typeof Sync.flagOn === 'function' && Sync.flagOn('learning.curve_enabled') === false);
+  const modes = [{ k: '', label: '全部模式' }].concat(MODES.map(m => ({ k: m, label: MODE_LABELS[m] })));
+  const chips = modes.map(mo => `<div class="drill-chip ${listMode === mo.k ? 'active' : ''}" data-lm="${escapeHtml(mo.k)}">${escapeHtml(mo.label)}</div>`).join('');
+  const list = WORDS.filter(wrongListFilter);
+  const PAGE = 20;
+  const totalPages = Math.max(1, Math.ceil(list.length / PAGE));
+  if (wrongPage >= totalPages) wrongPage = totalPages - 1;
+  if (wrongPage < 0) wrongPage = 0;
+  const pageItems = list.slice(wrongPage * PAGE, wrongPage * PAGE + PAGE);
+  const items = pageItems.map(w => {
+    const lv = listMode === '' ? bestLevel(w.name) : ((SR[listMode] && SR[listMode][w.name]) || { l: 0 }).l;
+    const h = wordHistory(w.name);
+    const rate = h.length ? Math.round(h.reduce((a, e) => a + e.r, 0) / h.length * 100) : 0;
+    const curveBtn = curveOn ? `<button class="wl-curve" data-name="${escapeHtml(w.name)}">📈 曲线</button>` : '';
+    return `<div class="wl-item collapsed" data-name="${escapeHtml(w.name)}">
+      <div class="wl-main">
+        <div class="wl-word"><span class="wl-arrow">▸</span>${escapeHtml(w.name)}<span class="wl-pos">${escapeHtml(w.pos || '')}</span></div>
+        <div class="wl-mean">${escapeHtml(w.mean || '')}</div>
+      </div>
+      <div class="wl-meta">L${lv} · 记忆率 ${rate}%</div>
+      <div class="wl-acts">
+        <button class="wl-fix" data-name="${escapeHtml(w.name)}">纠错</button>
+        ${curveBtn}
+      </div>
+    </div>`;
+  }).join('');
+  const pager = list.length > 0 ? `<div class="wl-pager">
+      <button class="wl-prev" ${wrongPage === 0 ? 'disabled' : ''}>‹ 上一页</button>
+      <span class="wl-page">第 ${wrongPage + 1} / ${totalPages} 页</span>
+      <button class="wl-next" ${wrongPage >= totalPages - 1 ? 'disabled' : ''}>下一页 ›</button>
+    </div>` : '';
+  wl.innerHTML = `<div class="wl-head"><div class="wl-title">错词本 · 共 <b>${list.length}</b> 词</div>
+      <button class="wl-start" id="wlStart">开始练习</button></div>
+    <div class="wl-modes">${chips}</div>
+    <div class="wl-items">${items || '<div class="empty">暂无错词 🎉 去练练别的吧</div>'}</div>${pager}`;
+  wl.querySelectorAll('.drill-chip').forEach(c => c.onclick = () => { listMode = c.dataset.lm; wrongPage = 0; renderWrongList(); });
+  const start = document.getElementById('wlStart');
+  if (start) start.onclick = () => { location.href = 'learn.html?mode=' + (listMode || 'meaning') + '&drill=wrong'; };
+  wl.querySelectorAll('.wl-fix').forEach(b => b.onclick = () => { location.href = 'learn.html?mode=' + (listMode || 'meaning') + '&drill=wrong&w=' + encodeURIComponent(b.dataset.name); });
+  wl.querySelectorAll('.wl-curve').forEach(b => b.onclick = () => showCurveFor(b.dataset.name));
+  // 点击行（除按钮外）折叠/展开释义
+  wl.querySelectorAll('.wl-item').forEach(it => it.onclick = (e) => {
+    if (e.target.closest('button')) return;
+    it.classList.toggle('collapsed');
+  });
+  const prev = wl.querySelector('.wl-prev');
+  if (prev) prev.onclick = () => { if (wrongPage > 0) { wrongPage--; renderWrongList(); } };
+  const next = wl.querySelector('.wl-next');
+  if (next) next.onclick = () => { if (wrongPage < totalPages - 1) { wrongPage++; renderWrongList(); } };
+  applyLearnGates();
+}
 let queue = [];
 let idx = 0;
 
@@ -613,6 +687,7 @@ function leBoot(d) {
     }
     renderStreak();
     Sync.onStudy(renderStreak);
+    if (wrongOnly && !startName) { renderWrongList(); return; }
     show();
     // 卡片渲染后再校正一次（最新开关值已由文件末尾的 Sync.onFlags 订阅保证）
     applyLearnGates();

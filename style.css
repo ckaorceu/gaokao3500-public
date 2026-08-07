@@ -1376,3 +1376,43 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   .mode-picker-chips { grid-template-columns: repeat(2, 1fr); }
 }
 
+/* ===== 错词本列表视图（2026-08-07） ===== */
+.wrong-list { max-width: 720px; margin: 0 auto; }
+.wrong-list .wl-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 6px 0 14px; }
+.wrong-list .wl-title { font-size: 16px; font-weight: 600; }
+.wrong-list .wl-start { padding: 10px 18px; font-size: 14px; border: none; border-radius: 10px; background: var(--accent); color: #fff; cursor: pointer; }
+.wrong-list .wl-start:active { transform: translateY(1px); }
+.wrong-list .wl-modes { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.wrong-list .wl-items { display: flex; flex-direction: column; gap: 10px; }
+.wrong-list .wl-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+.wrong-list .wl-main { flex: 1; min-width: 0; }
+.wrong-list .wl-word { font-weight: 600; font-size: 15px; }
+.wrong-list .wl-pos { font-size: 12px; color: var(--muted); margin-left: 6px; }
+.wrong-list .wl-mean { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wrong-list .wl-meta { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.wrong-list .wl-acts { display: flex; gap: 8px; flex: 0 0 auto; }
+.wrong-list .wl-fix, .wrong-list .wl-curve { padding: 8px 13px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; font-size: 13px; }
+.wrong-list .wl-curve { background: var(--surface); color: var(--text); border-color: var(--border); }
+
+/* 折叠：默认收起释义，点词展开 */
+.wrong-list .wl-item.collapsed .wl-mean { display: none; }
+.wrong-list .wl-item:not(.collapsed) .wl-mean { white-space: normal; }
+.wrong-list .wl-arrow { display: inline-block; width: 1em; margin-right: 2px; color: var(--muted); transition: transform .15s ease; }
+.wrong-list .wl-item:not(.collapsed) .wl-arrow { transform: rotate(90deg); }
+.wrong-list .wl-word { cursor: pointer; user-select: none; }
+
+/* 分页 */
+.wrong-list .wl-pager { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 16px; }
+.wrong-list .wl-prev, .wrong-list .wl-next { padding: 9px 18px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; font-size: 14px; }
+.wrong-list .wl-prev:not([disabled]):active, .wrong-list .wl-next:not([disabled]):active { transform: translateY(1px); }
+.wrong-list .wl-prev[disabled], .wrong-list .wl-next[disabled] { opacity: .4; cursor: not-allowed; }
+.wrong-list .wl-page { font-size: 13px; color: var(--muted); }
+.wrong-list .wl-fix:active, .wrong-list .wl-curve:active { transform: translateY(1px); }
+
+@media (max-width: 640px) {
+  .wrong-list .wl-item { flex-wrap: wrap; }
+  .wrong-list .wl-meta { width: 100%; order: 3; }
+  .wrong-list .wl-acts { width: 100%; order: 4; }
+  .wrong-list .wl-fix, .wrong-list .wl-curve { flex: 1; }
+}
+
