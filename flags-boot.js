@@ -28,7 +28,9 @@
     'learning.curve_enabled': ['#curveBtn'],
     'learning.marks_enabled': ['.marks-toggle-row', '#hardToggleCard', '#easyCard', '#masteredCard'],
     'nav.bookunits_enabled': ['#unitBlock'],
-    'nav.sort_enabled': ['#sortRow', '#orderChips']
+    'nav.sort_enabled': ['#sortRow', '#orderChips'],
+    'nav.streak_enabled': ['#streak'],
+    'nav.wrongbook_enabled': ['#wrongCard']
   };
 
   // 供 app.js / learn.js 在开关应用完毕后调用，移除临时样式，交还控制权给行内 style

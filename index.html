@@ -30,9 +30,10 @@
 <link rel="preconnect" href="https://bkuvirojzuetweondgrx.supabase.co">
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="dns-prefetch" href="https://dict.youdao.com">
-<link rel="stylesheet" href="style.css?v=41">
+<link rel="preload" href="words.js?v=1" as="script">
+<link rel="stylesheet" href="style.css?v=43">
 <!-- 首屏防闪现：必须同步执行（勿加 defer/async），在渲染前用缓存隐藏后台已关闭的模块 -->
-<script src="flags-boot.js?v=1" charset="utf-8"></script>
+<script src="flags-boot.js?v=2" charset="utf-8"></script>
 </head>
 <body>
 <header class="topbar">
@@ -45,6 +46,9 @@
   </div>
   <div id="auth-mount"></div>
 </header>
+
+<div id="annBar" class="ann-bar" hidden></div>
+<div id="maintBar" class="maint-bar" hidden>🛠 站点维护中，部分功能可能暂时不可用</div>
 
 <main class="container">
 
@@ -63,7 +67,7 @@
   </section>
 
   <section class="quick">
-    <a class="quick-card" href="learn.html?mode=meaning&drill=wrong">
+    <a class="quick-card" id="wrongCard" href="learn.html?mode=meaning&drill=wrong">
       <span class="qc-icon">🔴</span>
       <span class="qc-text">错词本 <b id="wrongCount">0</b></span>
     </a>
@@ -217,10 +221,10 @@
 <script defer src="common.js?v=2" charset="utf-8"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-<script defer src="sync.js?v=29" charset="utf-8"></script>
+<script defer src="sync.js?v=30" charset="utf-8"></script>
 <script defer src="quotes.js?v=1" charset="utf-8"></script>
-<script defer src="app.js?v=39" charset="utf-8"></script>
-<script defer src="report.js?v=4" charset="utf-8"></script>
+<script defer src="app.js?v=40" charset="utf-8"></script>
+<script defer src="report.js?v=5" charset="utf-8"></script>
 <!-- deploy: turnstile-ui-polish-3 -->
 </body>
 </html>

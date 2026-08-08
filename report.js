@@ -26,10 +26,13 @@
     if (!ts) return '';
     try { return new Date(ts).toLocaleString(); } catch (e) { return ''; }
   }
-  function cacheHint(ts) {
+  function cacheHint(ts, refreshKind) {
     var t = fmtTs(ts);
     if (!t) return '';
-    return '<div class="report-cache-hint">已保存到本机 · 上次生成于 ' + escapeHtml(t) + ' · 点上方按钮可重新生成</div>';
+    var btn = refreshKind
+      ? '<button type="button" class="refresh-btn" data-refresh="' + escapeHtml(refreshKind) + '">🔄 刷新</button>'
+      : '';
+    return '<div class="report-cache-hint">已保存到本机 · 上次生成于 ' + escapeHtml(t) + btn + '</div>';
   }
   function showIfLoggedIn() {
     var card = el('reportCard');
@@ -47,7 +50,7 @@
     // 报告与计划都已持久化：两者均存在时一并呈现，互不覆盖（旧逻辑 if/else 会让报告遮盖计划）
     var parts = [];
     if (c && c.report && c.report.result) {
-      parts.push('<div class="rp-block"><h4 class="rp-h">📊 学习报告</h4><div class="report-text">' + escapeHtml(c.report.result) + '</div>' + cacheHint(c.report.ts) + '</div>');
+      parts.push('<div class="rp-block"><h4 class="rp-h">📊 学习报告</h4><div class="report-text">' + escapeHtml(c.report.result) + '</div>' + cacheHint(c.report.ts, 'report') + '</div>');
     }
     if (c && c.plan && c.plan.result && c.plan.result.length) {
       var items = (c.plan.result || []).map(function (it) {
@@ -55,7 +58,7 @@
         var href = 'learn.html?mode=' + encodeURIComponent(mode) + '&w=' + encodeURIComponent(it.word || '');
         return '<li><a href="' + href + '">📝 ' + escapeHtml(it.word) + ' <span class="reason">' + escapeHtml(it.reason || '') + '</span></a></li>';
       }).join('');
-      parts.push('<div class="rp-block"><h4 class="rp-h">📝 复习计划</h4><ul class="plan-list">' + items + '</ul>' + cacheHint(c.plan.ts) + '</div>');
+      parts.push('<div class="rp-block"><h4 class="rp-h">📝 复习计划</h4><ul class="plan-list">' + items + '</ul>' + cacheHint(c.plan.ts, 'plan') + '</div>');
     }
     if (parts.length) {
       st.innerHTML = parts.join('');
@@ -83,15 +86,15 @@
     var st = el('reportBody');
     if (!st) return;
     if (d.action === 'report') {
-      st.innerHTML = '<div class="report-text">' + escapeHtml(d.result || '') + '</div>' + cacheHint(ts);
+      st.innerHTML = '<div class="rp-block"><h4 class="rp-h">📊 学习报告</h4><div class="report-text">' + escapeHtml(d.result || '') + '</div>' + cacheHint(ts, 'report') + '</div>';
     } else {
       var list = d.result || [];
       if (!list.length) { st.innerHTML = '<div class="auth-msg">暂无可推荐复习项 🎉</div>'; return; }
-      st.innerHTML = '<ul class="plan-list">' + list.map(function (it) {
+      st.innerHTML = '<div class="rp-block"><h4 class="rp-h">📝 复习计划</h4><ul class="plan-list">' + list.map(function (it) {
         var mode = it.mode || 'meaning';
         var href = 'learn.html?mode=' + encodeURIComponent(mode) + '&w=' + encodeURIComponent(it.word || '');
         return '<li><a href="' + href + '">📝 ' + escapeHtml(it.word) + ' <span class="reason">' + escapeHtml(it.reason || '') + '</span></a></li>';
-      }).join('') + '</ul>' + cacheHint(ts);
+      }).join('') + '</ul>' + cacheHint(ts, 'plan') + '</div>';
     }
   }
   // 绑定
@@ -105,6 +108,13 @@
     gen('plan');
   };
   var bc = el('reportCloseBtn'); if (bc) bc.onclick = function () { var d = el('reportDlg'); if (d) d.close(); };
+  // 「🔄 刷新」按钮事件委托（严格 CSP 兼容，用 addEventListener 委托，不用内联 onclick）
+  document.addEventListener('click', function (e) {
+    var rb = e.target.closest('[data-refresh]');
+    if (!rb) return;
+    e.preventDefault();
+    gen(rb.getAttribute('data-refresh'));   // 'report' | 'plan'
+  });
   showIfLoggedIn();
   if (typeof Sync !== 'undefined' && Sync.onAuth) Sync.onAuth(showIfLoggedIn);
 })();

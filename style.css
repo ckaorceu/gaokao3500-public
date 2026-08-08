@@ -74,6 +74,32 @@ html, body {
 }
 .brand { font-weight: 700; font-size: 17px; letter-spacing: -.2px; }
 .stats { font-size: 13px; color: var(--muted); }
+.ann-bar {
+  position: sticky; top: 0; z-index: 9;
+  display: flex; align-items: center; gap: 10px;
+  margin: 0 auto; max-width: 960px; padding: 9px 18px;
+  background: var(--accent-grad, #2f6bff); color: #fff;
+  border-radius: 0 0 14px 14px; font-size: 13px; line-height: 1.5;
+  box-shadow: var(--shadow-sm);
+}
+.ann-bar[hidden] { display: none; }
+.ann-ico { font-size: 15px; flex: 0 0 auto; }
+.ann-text { flex: 1; min-width: 0; }
+.ann-more { opacity: .85; font-size: 12px; }
+.ann-close {
+  flex: 0 0 auto; width: 22px; height: 22px; border: none; border-radius: 50%;
+  background: rgba(255,255,255,.25); color: #fff; font-size: 12px; line-height: 1;
+  cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+}
+.ann-close:hover { background: rgba(255,255,255,.4); }
+.maint-bar {
+  position: sticky; top: 0; z-index: 9;
+  margin: 0 auto; max-width: 960px; padding: 8px 18px;
+  background: var(--warning-bg, #fff3cd); color: #7a5b00;
+  border-bottom: 1px solid var(--warning-border, #ffd97a);
+  text-align: center; font-size: 13px; line-height: 1.5;
+}
+.maint-bar[hidden] { display: none; }
 
 .container {
   max-width: 980px;
@@ -882,7 +908,9 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 .report-actions .primary:hover { background: var(--accent-grad); color: #fff; box-shadow: 0 6px 16px rgba(47,107,255,.3); }
 .report-body { margin-top: 14px; max-height: 60vh; overflow: auto; font-size: 14px; line-height: 1.7; color: var(--text); }
 .report-text { white-space: pre-wrap; }
-.report-cache-hint { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border, #e5e7eb); color: var(--muted); font-size: 12px; line-height: 1.5; }
+.report-cache-hint { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border, #e5e7eb); color: var(--muted); font-size: 12px; line-height: 1.5; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.refresh-btn { margin-left: auto; padding: 6px 14px; border: 1px solid var(--border); border-radius: 999px; background: var(--accent-grad, #2f6bff); color: #fff; font-size: 13px; cursor: pointer; }
+.refresh-btn:hover { box-shadow: 0 4px 12px rgba(47,107,255,.3); }
 .rp-block { margin-top: 16px; }
 .rp-block:first-child { margin-top: 0; }
 .rp-h { margin: 0 0 8px; font-size: 14px; font-weight: 600; color: var(--text); }

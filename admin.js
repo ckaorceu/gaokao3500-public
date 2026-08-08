@@ -1184,9 +1184,9 @@
   function loadFlags() {
     Sync.rpc('admin_list_feature_flags').then(function (rows) {
       if (!rows || !rows.length) { $('#flagList').innerHTML = '<div class="empty">暂无开关</div>'; return; }
-      // 按 key 前缀分组：content / learning / nav / security
-      var groups = { content: '内容展示', learning: '学习增强', nav: '导航交互', security: '安全' };
-      var order = ['content', 'learning', 'nav', 'security'];
+      // 按 key 前缀分组：content / learning / nav / security / ai / site
+      var groups = { content: '内容展示', learning: '学习增强', nav: '导航交互', security: '安全', ai: 'AI 能力', site: '站点' };
+      var order = ['content', 'learning', 'nav', 'security', 'ai', 'site'];
       var map = {};
       rows.forEach(function (f) {
         var g = (f.key || '').split('.')[0];

@@ -288,7 +288,14 @@ function applyFeatureGates() {
   on('nav.bookunits_enabled') ? show($('#unitBlock')) : hide($('#unitBlock'));         // 词书进度单元
   on('nav.sort_enabled') ? show($('#sortRow')) : hide($('#sortRow'));                  // 列表排序
   on('nav.sort_enabled') ? show($('#orderChips')) : hide($('#orderChips'));            // 练习顺序
+  on('nav.streak_enabled') ? show($('#streak')) : hide($('#streak'));                  // 连续打卡徽章
+  on('nav.wrongbook_enabled') ? show($('#wrongCard')) : hide($('#wrongCard'));         // 错词本入口
   on('learning.calendar_enabled') ? show($('#calendarCard')) : hide($('#calendarCard')); // 复习日历入口
+  // 维护模式：开启后顶部显示维护提示条
+  if (on('site.maintenance_mode')) {
+    const mb = document.getElementById('maintBar');
+    if (mb) mb.hidden = false;
+  }
   applyMarksVisibility();
   // 开关已落到各元素的行内 style 上，移除 flags-boot.js 注入的临时 !important 样式，
   // 否则后续被「打开」的模块会因 !important 而无法显示
@@ -497,6 +504,38 @@ function renderStreak() {
   el.innerHTML = n > 0 ? ('🔥 连续 ' + n + ' 天') : '📅 今天还没学';
 }
 
+// 站内公告条：拉取当前有效公告并展示在页面顶部（可关闭，本次会话内不再重复出现）
+function renderAnnouncements() {
+  var bar = document.getElementById('annBar');
+  if (!bar) return;
+  if (typeof Sync === 'undefined' || !Sync.fetchAnnouncements) return;
+  Sync.fetchAnnouncements().then(function (list) {
+    if (!list || !list.length) { bar.hidden = true; return; }
+    // 多条公告：标题 + 第一条正文（可展开），或逐条排列。这里取最近一条展示，其余折叠到提示
+    var top = list[0];
+    var more = list.length > 1 ? ' <span class="ann-more">+ ' + (list.length - 1) + ' 条</span>' : '';
+    bar.hidden = false;
+    bar.innerHTML =
+      '<span class="ann-ico">📢</span>' +
+      '<span class="ann-text"><b>' + escapeHtml(top.title) + '</b> ' + escapeHtml(top.body) + more + '</span>' +
+      '<button type="button" class="ann-close" title="关闭">✕</button>';
+    bar.querySelector('.ann-close').onclick = function () {
+      bar.hidden = true;
+      try { sessionStorage.setItem('gaokao3500.annClosed', String(list[0].id)); } catch (e) {}
+    };
+  }).catch(function () { bar.hidden = true; });
+}
+// 恢复上次关闭的公告条（同一会话内关闭过则不再展示）
+function restoreAnnClosed() {
+  try {
+    var closed = sessionStorage.getItem('gaokao3500.annClosed');
+    if (closed) {
+      var bar = document.getElementById('annBar');
+      if (bar) bar.setAttribute('data-closed', closed);
+    }
+  } catch (e) {}
+}
+
 // events
 let searchTimer = null;
 $('#search').addEventListener('input', e => {
@@ -582,6 +621,8 @@ function boot(d) {
     var mc = document.getElementById('masteredCount');
     if (mc) mc.textContent = masteredCount();
     Sync.onStudy(renderStreak);
+    // 站内公告条（异步拉取，不阻塞首屏）
+    renderAnnouncements();
   });
 }
 // 首屏防闪现三步走（避免后台已关闭的模块先显示一下再消失）：

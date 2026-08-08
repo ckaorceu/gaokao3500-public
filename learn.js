@@ -39,7 +39,13 @@ const weakOnly = params.get('drill') === 'weak';
 const wrongOnly = params.get('drill') === 'wrong';
 const easyOnly = params.get('drill') === 'easy';       // 太简单词本：只练太简单的词（可被取消标记）
 const masteredOnly = params.get('drill') === 'mastered'; // 已掌握词本：只练已掌握的词（可被取消标记）
-let repeatOn = params.get('repeat') === 'on';   // 重复记忆：评不会/模糊自动重练（运行时可按 R 切换）
+// 重复记忆：URL 有 repeat 参数则按参数；否则按后台开关 learning.repeat_default 决定默认开/关（运行时可按 R 切换）
+let repeatOn;
+try {
+  repeatOn = params.has('repeat')
+    ? params.get('repeat') === 'on'
+    : !(window.Sync && typeof Sync.flagOn === 'function' && Sync.flagOn('learning.repeat_default') === false);
+} catch (e) { repeatOn = false; }
 const REPEAT_MAX = parseInt(params.get('rmax') || '', 10);  // 上限；NaN 或 -1 表示无限
 const REPEAT_LIMIT_RAW = isNaN(REPEAT_MAX) || REPEAT_MAX < 0 ? Infinity : REPEAT_MAX;
 // 安全上限：防止「重复记忆 + 无限次」下队列无限膨胀（review 建议的硬上限）
@@ -48,7 +54,24 @@ const REPEAT_LIMIT = Math.min(REPEAT_LIMIT_RAW, REPEAT_HARD_CAP);
 const repeatCount = {};                           // name -> 本轮已重复次数
 
 function srOf(name) { return (SR[mode] && SR[mode][name]) || { l: 0, due: 0, iv: 0 }; }
-function bestLevel(name) { let m = 0; for (const k in SR) { const r = SR[k] && SR[k][name]; if (r && r.l > m) m = r.l; } return m; }
+// bestLevel 缓存：错词本列表会对 3500 词逐个调用，原实现每次 O(模式数) 全遍历，SR 数据多时很慢。
+// 改为惰性构建 Map（首次全量一次，之后 O(1) 查询），在 SR 被修改（rate 写行 / 数据加载赋值）时失效重建。
+let _lvlCache = null;
+function invalidateLvlCache() { _lvlCache = null; _wrongListCache = null; _wrongListCacheMode = null; }
+function bestLevel(name) {
+  if (!_lvlCache) {
+    const m = new Map();
+    for (const k in SR) {
+      const mm = SR[k]; if (!mm) continue;
+      for (const n in mm) {
+        const rec = mm[n];
+        if (rec && rec.l > (m.get(n) || 0)) m.set(n, rec.l);
+      }
+    }
+    _lvlCache = m;
+  }
+  return _lvlCache.get(name) || 0;
+}
 
 // ---- 标记体系（太简单 / 重难词 / 已掌握） ----
 // 标记选项总开关：关闭后，学习页不再渲染标记按钮、也不应用「太简单退役 / 重难优先」逻辑
@@ -196,6 +219,8 @@ function buildQueue() {
 // 错词本列表视图（drill=wrong 且无指定词 w 时进入，先列清单再选模式纠错）
 let listMode = '';   // '' = 全部模式（bestLevel L1~L2）；'meaning'/'word'/... = 该模式下 L1~L2 的错词
 let wrongPage = 0;   // 错词本列表分页当前页（每页 20 条）
+let _wrongListCache = null;        // 错词表过滤结果缓存（按 listMode）
+let _wrongListCacheMode = null;    // 缓存对应的 listMode
 function wrongListFilter(w) {
   if (listMode === '') { const b = bestLevel(w.name); return b >= 1 && b <= 2; }
   const r = (SR[listMode] && SR[listMode][w.name]) || { l: 0 };
@@ -219,7 +244,12 @@ function renderWrongList() {
   const curveOn = !(window.Sync && typeof Sync.flagOn === 'function' && Sync.flagOn('learning.curve_enabled') === false);
   const modes = [{ k: '', label: '全部模式' }].concat(MODES.map(m => ({ k: m, label: MODE_LABELS[m] })));
   const chips = modes.map(mo => `<div class="drill-chip ${listMode === mo.k ? 'active' : ''}" data-lm="${escapeHtml(mo.k)}">${escapeHtml(mo.label)}</div>`).join('');
-  const list = WORDS.filter(wrongListFilter);
+  // 错词表缓存：仅在 listMode 变化时全表过滤一次，切页/重渲染不重复遍历 3500 词（bestLevel 亦已 O(1)）
+  if (_wrongListCache === null || _wrongListCacheMode !== listMode) {
+    _wrongListCacheMode = listMode;
+    _wrongListCache = WORDS.filter(wrongListFilter);
+  }
+  const list = _wrongListCache;
   const PAGE = 20;
   const totalPages = Math.max(1, Math.ceil(list.length / PAGE));
   if (wrongPage >= totalPages) wrongPage = totalPages - 1;
@@ -233,7 +263,7 @@ function renderWrongList() {
     return `<div class="wl-item collapsed" data-name="${escapeHtml(w.name)}">
       <div class="wl-main">
         <div class="wl-word"><span class="wl-arrow">▸</span>${escapeHtml(w.name)}<span class="wl-pos">${escapeHtml(w.pos || '')}</span></div>
-        <div class="wl-mean">${escapeHtml(w.mean || '')}</div>
+        <div class="wl-mean">${escapeHtml(w.meaning || '')}</div>
       </div>
       <div class="wl-meta">L${lv} · 记忆率 ${rate}%</div>
       <div class="wl-acts">
@@ -253,7 +283,13 @@ function renderWrongList() {
     <div class="wl-items">${items || '<div class="empty">暂无错词 🎉 去练练别的吧</div>'}</div>${pager}`;
   wl.querySelectorAll('.drill-chip').forEach(c => c.onclick = () => { listMode = c.dataset.lm; wrongPage = 0; renderWrongList(); });
   const start = document.getElementById('wlStart');
-  if (start) start.onclick = () => { location.href = 'learn.html?mode=' + (listMode || 'meaning') + '&drill=wrong'; };
+  if (start) {
+    // 开始练习：跳到第一个错词并进入练习队列（带 &w= 定位到首词，否则 leBoot 会因 drill=wrong 且无 w 再次回到列表视图，表现为「点击无效」）
+    var firstWrong = list[0] ? list[0].name : '';
+    start.onclick = function () {
+      location.href = 'learn.html?mode=' + (listMode || 'meaning') + '&drill=wrong' + (firstWrong ? '&w=' + encodeURIComponent(firstWrong) : '');
+    };
+  }
   wl.querySelectorAll('.wl-fix').forEach(b => b.onclick = () => { location.href = 'learn.html?mode=' + (listMode || 'meaning') + '&drill=wrong&w=' + encodeURIComponent(b.dataset.name); });
   wl.querySelectorAll('.wl-curve').forEach(b => b.onclick = () => showCurveFor(b.dataset.name));
   // 点击行（除按钮外）折叠/展开释义
@@ -354,6 +390,10 @@ function revealTrickNow() { // 选/答完答案时调用
 const TRICK_AUTO_KEY = 'gaokao3500.trickAutoGen';
 const autoGenDone = new Set(); // 本次会话已尝试自动生成的词，避免重复调用
 function getTrickAuto() {
+  // 全局总开关 ai.trick_auto_enabled：后台关闭后全站禁止 AI 自动生成（即使本地开了）
+  try {
+    if (window.Sync && typeof Sync.flagOn === 'function' && Sync.flagOn('ai.trick_auto_enabled') === false) return false;
+  } catch (e) {}
   try { return localStorage.getItem(TRICK_AUTO_KEY) === '1'; } catch (e) { return false; }
 }
 function setTrickAuto(v) {
@@ -363,7 +403,7 @@ function setTrickAuto(v) {
   if (v && queue && queue[idx]) maybeAutoGenerateTrick(); // 开启时立即为当前词尝试
 }
 function maybeAutoGenerateTrick() {
-  if (!getTrickAuto()) return;
+  if (!getTrickAuto()) return;   // 错词练习也已关闭巧记（不显示也不自动生成）
   const it = queue[idx];
   if (!it) return;
   const w = it.w;
@@ -473,8 +513,15 @@ function applyLearnGates() {
   on('content.ukus_enabled') ? show($('#accentToggle')) : hide($('#accentToggle'));
   if (!on('content.realvoice_enabled')) $$('.speak').forEach(b => { b.style.display = 'none'; });
   if (!on('content.examples_enabled')) $$('.ex').forEach(e => { e.style.display = 'none'; });
-  on('content.tricks_enabled') ? show($('#trickPanel')) : hide($('#trickPanel'));
+  // 巧记面板：错词练习（drill=wrong）完全隐藏（不显示巧记，专注纠错）；正常练习按功能开关
+  if (wrongOnly) hide($('#trickPanel'));
+  else on('content.tricks_enabled') ? show($('#trickPanel')) : hide($('#trickPanel'));
   on('learning.curve_enabled') ? show($('#curveBtn')) : hide($('#curveBtn'));
+  // 维护模式：开启后顶部显示维护提示条
+  if (on('site.maintenance_mode')) {
+    const mb = document.getElementById('maintBar');
+    if (mb) mb.hidden = false;
+  }
   // 开关已落到行内 style，移除 flags-boot.js 注入的临时 !important 样式（否则打开的模块显示不出来）
   if (typeof window.__flagsBootDone === 'function') window.__flagsBootDone();
 }
@@ -633,6 +680,7 @@ function rate(targetLv) {
   const now = Date.now();
   // 遗忘曲线间隔改由 srs-core.js 的 srsInterval() 提供（见 <script src="srs-core.js">）
   if (!SR[mode]) SR[mode] = {};
+  invalidateLvlCache();   // bestLevel 缓存失效（SR 单行被改写）
   if (newLv <= 0) {
     // 不会：降级为 L1 薄弱词，明天再练（进入错词本，不再清空中进度）
     SR[mode][w.name] = { l: 1, due: now + 1 * DAY, iv: 1 };
@@ -768,6 +816,27 @@ function renderStreak() {
   el.innerHTML = n > 0 ? ('🔥 连续 ' + n + ' 天') : '📅 今天还没学';
 }
 
+// 站内公告条（与首页一致：拉取有效公告展示，可关闭）
+function renderAnnouncements() {
+  var bar = document.getElementById('annBar');
+  if (!bar) return;
+  if (typeof Sync === 'undefined' || !Sync.fetchAnnouncements) return;
+  Sync.fetchAnnouncements().then(function (list) {
+    if (!list || !list.length) { bar.hidden = true; return; }
+    var top = list[0];
+    var more = list.length > 1 ? ' <span class="ann-more">+ ' + (list.length - 1) + ' 条</span>' : '';
+    bar.hidden = false;
+    bar.innerHTML =
+      '<span class="ann-ico">📢</span>' +
+      '<span class="ann-text"><b>' + escapeHtml(top.title) + '</b> ' + escapeHtml(top.body) + more + '</span>' +
+      '<button type="button" class="ann-close" title="关闭">✕</button>';
+    bar.querySelector('.ann-close').onclick = function () {
+      bar.hidden = true;
+      try { sessionStorage.setItem('gaokao3500.annClosed', String(list[0].id)); } catch (e) {}
+    };
+  }).catch(function () { bar.hidden = true; });
+}
+
 // 模式切换（已移到首页选择，学习页只读 URL 参数）
 function $$(s) { return Array.from(document.querySelectorAll(s)); }
 
@@ -874,6 +943,7 @@ function leBoot(d) {
   }).then(function (appr) {
     window.APPROVED_TRICKS = appr || {};
     SR = d.sr || {};
+    invalidateLvlCache();   // SR 整体赋值，bestLevel 缓存失效
     tricks = d.tricks || {};
     queue = buildQueue();
     if (startName) {
@@ -882,6 +952,7 @@ function leBoot(d) {
     }
     renderStreak();
     Sync.onStudy(renderStreak);
+    renderAnnouncements();
     if (wrongOnly && !startName) { renderWrongList(); return; }
     show();
     // 卡片渲染后再校正一次（最新开关值已由文件末尾的 Sync.onFlags 订阅保证）

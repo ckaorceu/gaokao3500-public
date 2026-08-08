@@ -789,6 +789,10 @@
     var msg = document.getElementById('authMsg');
     if (!uname || !email || !pw) { msg.className = 'auth-msg err'; msg.textContent = '请填写用户名、邮箱和密码'; return; }
     if (!/^[\w一-龥]{3,20}$/.test(uname)) { msg.className = 'auth-msg err'; msg.textContent = '用户名需 3-20 位（字母/数字/中文/下划线）'; return; }
+    // 新用户注册开关：后台关闭后暂停注册（防恶意注册）
+    if (flagOn('security.registration_enabled') === false) {
+      msg.className = 'auth-msg err'; msg.textContent = '当前暂停新用户注册，请稍后再试或联系管理员'; return;
+    }
     if (pw.length < 6) { msg.className = 'auth-msg err'; msg.textContent = '密码至少 6 位'; return; }
     if (shouldShowCaptcha()) {
       if (!window.turnstile) { msg.className = 'auth-msg err'; msg.textContent = '人机验证组件加载中，请稍候重试'; return; }
@@ -1061,6 +1065,28 @@
     });
   }
 
+  // ---------- 公告 ----------
+  // 拉取当前有效公告（active 且未过期），带 localStorage 缓存（10 分钟），失败时静默返回空
+  function fetchAnnouncements() {
+    if (!config() || !sb) return Promise.resolve([]);
+    var CACHE_KEY = 'gaokao3500.announcements';
+    try {
+      var c = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+      if (c && c.ts && Date.now() - c.ts < 10 * 60000) return Promise.resolve(c.list || []);
+    } catch (e) {}
+    return sb.rpc('public_active_announcements').then(function (r) {
+      if (r.error) return [];
+      var list = r.data || [];
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), list: list })); } catch (e) {}
+      return list;
+    }).catch(function () { return []; });
+  }
+  // 强制刷新公告（发布后立即可见，供前台「刷新」或页面重载时用）
+  function refreshAnnouncements() {
+    try { localStorage.removeItem('gaokao3500.announcements'); } catch (e) {}
+    return fetchAnnouncements();
+  }
+
   // ---------- 内容管理：词库覆盖 ----------
   // 读取管理员在后台编辑的单词覆盖（所有人可读，含未登录），返回 { word: {...} }
   function loadWordOverrides() {
@@ -1175,6 +1201,7 @@
     loadApprovedTricks: loadApprovedTricks,
     rpc: rpc, getWordOverride: getWordOverride, saveWordOverride: saveWordOverride, deleteWordOverride: deleteWordOverride,
     onStudy: onStudy, streak: computeStreak, jwt: function () { return accessToken; },
+    fetchAnnouncements: fetchAnnouncements, refreshAnnouncements: refreshAnnouncements,
     // 后台「功能开关」读取接口（feature_flags 表，由后台「🎛️ 运营」管理）
     flagOn: flagOn, ensureFlags: ensureFlags, onFlags: onFlags
   };
