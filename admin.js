@@ -11,7 +11,7 @@
     contentSearch: '', onlyOverrides: false, overrides: [], overrideSet: new Set(),
     editWord: null, userLoading: false, filter: 'all', trickStatus: 'pending',
     trickOffset: 0, trickLimit: 50, trickHasMore: false, trickExcludeEmpty: true,
-    trickRawCursor: 0, trickPageStarts: [0], trickSelIds: {}
+    trickRawCursor: 0, trickPageStarts: [0], trickSelIds: {}, trickData: {}
   };
 
   function fmtDate(s) {
@@ -747,6 +747,7 @@
       updateTrickSelUI(); return;
     }
     $('#trickList').innerHTML = rows.map(function (t) {
+      state.trickData[t.id] = t;
       const txt = [t.assoc, t.root, t.homo, t.ex].filter(Boolean).map(function (s) { return escapeHtml(s); }).join(' ｜ ');
       const idAttr = escapeHtml(String(t.id));
       const checked = state.trickSelIds[t.id] ? ' checked' : '';
@@ -757,13 +758,18 @@
         '<div class="tc-body">' + (txt || '<span class="muted">（空）</span>') + '</div>' +
         '<div class="tc-actions">' +
           '<button class="auth-btn ok" data-act="approve" data-id="' + idAttr + '">通过</button> ' +
-          '<button class="auth-btn danger" data-act="reject" data-id="' + idAttr + '">驳回</button>' +
-        '</div></div>';
+          '<button class="auth-btn danger" data-act="reject" data-id="' + idAttr + '">驳回</button> ' +
+          '<button class="auth-btn ghost" data-act="aireview" data-id="' + idAttr + '">🤖 AI 审核</button>' +
+        '</div>' +
+        '<div class="tc-ai" data-ai="' + idAttr + '" hidden></div>' +
+      '</div>';
     }).join('');
     $$('#trickList button[data-act]').forEach(function (b) {
       b.onclick = function () {
         const id = parseInt(b.dataset.id, 10);
-        const st = b.dataset.act === 'approve' ? 'approved' : 'rejected';
+        const act = b.dataset.act;
+        if (act === 'aireview') { aiReviewTrick(id, b); return; }
+        const st = act === 'approve' ? 'approved' : 'rejected';
         Sync.rpc('admin_moderate_trick', { p_id: id, p_status: st }).then(function () {
           delete state.trickSelIds[id];
           toast('已' + (st === 'approved' ? '通过' : '驳回'), 'ok'); loadTricksMod();
@@ -778,6 +784,85 @@
       };
     });
     updateTrickSelUI();
+  }
+
+  // AI 辅助审核：调 ai_review_trick Edge Function，把评估结果展示在卡片内
+  function aiReviewTrick(id, btn) {
+    const data = state.trickData[id];
+    if (!data) { toast('找不到该巧记数据', 'err'); return; }
+    const jwt = Sync.jwt && Sync.jwt();
+    if (!jwt) { toast('未登录或会话已失效', 'err'); return; }
+    const box = $('#trickList .tc-ai[data-ai="' + id + '"]');
+    if (btn) { btn.disabled = true; btn.textContent = '🤖 审核中…'; }
+    if (box) { box.hidden = false; box.className = 'tc-ai loading'; box.textContent = 'AI 正在评估…'; }
+    const url = (window.APP_CONFIG && window.APP_CONFIG.SUPABASE_URL) + '/functions/v1/ai_review_trick';
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + jwt },
+      body: JSON.stringify({ word: data.word, assoc: data.assoc || '', root: data.root || '', homo: data.homo || '', ex: data.ex || '' })
+    }).then(function (r) {
+      return r.json().then(function (j) { return { status: r.status, body: j || {} }; });
+    }).then(function (res) {
+      if (btn) { btn.disabled = false; btn.textContent = '🤖 AI 审核'; }
+      if (box) box.className = 'tc-ai';
+      if (res.status === 200 && res.body && res.body.ok && res.body.review) {
+        const rv = res.body.review;
+        const vmap = { pass: '✅ 建议通过', review: '⚠️ 建议复核', reject: '❌ 建议驳回' };
+        const verdict = vmap[rv.verdict] || (rv.verdict || '—');
+        const tags = [];
+        if (typeof rv.accurate === 'boolean') tags.push('准确 ' + (rv.accurate ? '是' : '否'));
+        if (typeof rv.safe === 'boolean') tags.push('安全 ' + (rv.safe ? '是' : '否'));
+        if (typeof rv.relevant === 'boolean') tags.push('相关 ' + (rv.relevant ? '是' : '否'));
+        const q = rv.quality != null ? rv.quality : '—';
+        const sugg = rv.suggestion ? ('｜建议：' + escapeHtml(rv.suggestion)) : '';
+        if (box) {
+          box.innerHTML = '<b>🤖 AI 审核</b> · 质量 <b>' + q + '/5</b> · ' + verdict +
+            (tags.length ? ' ｜ ' + escapeHtml(tags.join(' · ')) : '') + (sugg ? '<br>' + sugg : '');
+        }
+      } else {
+        const err = (res.body && (res.body.error || res.body.message)) || ('HTTP ' + res.status);
+        if (box) box.innerHTML = '<span class="tc-ai-err">AI 审核失败：' + escapeHtml(err) + '</span>';
+        toast('AI 审核失败：' + err, 'err');
+      }
+    }).catch(function (e) {
+      if (btn) { btn.disabled = false; btn.textContent = '🤖 AI 审核'; }
+      if (box) { box.className = 'tc-ai'; box.innerHTML = '<span class="tc-ai-err">AI 审核请求异常：' + escapeHtml(e && e.message ? e.message : e) + '</span>'; }
+      toast('AI 审核请求异常', 'err');
+    });
+  }
+
+  // 批量 AI 审核并自动通过：调 ai_review_batch Edge Function（拉取待审队列→逐条 AI 评估→通过的自动通过）
+  function aiReviewBatch() {
+    const jwt = Sync.jwt && Sync.jwt();
+    if (!jwt) { toast('未登录或会话已失效', 'err'); return; }
+    const btn = $('#trickBatchAi');
+    const statusEl = $('#trickBatchAiStatus');
+    if (btn) { btn.disabled = true; btn.textContent = '🤖 AI 批量审核中…'; }
+    if (statusEl) statusEl.textContent = '正在拉取待审队列并逐条 AI 评估…';
+    const url = (window.APP_CONFIG && window.APP_CONFIG.SUPABASE_URL) + '/functions/v1/ai_review_batch';
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + jwt },
+      body: JSON.stringify({})
+    }).then(function (r) {
+      return r.json().then(function (j) { return { status: r.status, body: j || {} }; });
+    }).then(function (res) {
+      if (btn) { btn.disabled = false; btn.textContent = '🤖 批量 AI 审核并自动通过'; }
+      const b = res.body || {};
+      if (res.status === 200 && b.ok) {
+        if (statusEl) statusEl.textContent = b.message || ('已处理 ' + (b.total || 0) + ' 条');
+        toast(b.message || '批量 AI 审核完成', 'ok');
+        loadTricksMod();
+      } else {
+        const err = b.error || b.message || ('HTTP ' + res.status);
+        if (statusEl) statusEl.textContent = '失败：' + err;
+        toast('批量 AI 审核失败：' + err, 'err');
+      }
+    }).catch(function (e) {
+      if (btn) { btn.disabled = false; btn.textContent = '🤖 批量 AI 审核并自动通过'; }
+      if (statusEl) statusEl.textContent = '请求异常';
+      toast('批量 AI 审核请求异常', 'err');
+    });
   }
 
   // 批量审核：复用 admin_moderate_trick；选择跨页累积于 state.trickSelIds
@@ -1156,6 +1241,8 @@
       bc._bound = true;
       bc.onclick = function () { state.trickSelIds = {}; $$('#trickList input.trick-sel').forEach(function (c) { c.checked = false; }); updateTrickSelUI(); };
     }
+    const bai = $('#trickBatchAi');
+    if (bai && !bai._bound) { bai._bound = true; bai.onclick = aiReviewBatch; }
     const ac = $('#annCreate');
     if (ac && !ac._bound) { ac._bound = true; ac.onclick = createAnnouncement; }
     const aiS = $('#aiSave'), aiT = $('#aiTest'), aiU = $('#aiUsageRefresh');

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>站长后台 · 高考3500词</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="style.css?v=35">
+<link rel="stylesheet" href="style.css?v=37">
 </head>
 <body>
 <header class="topbar">
@@ -176,6 +176,9 @@
           <button class="auth-btn ok" id="trickBatchApprove" disabled>批量通过</button>
           <button class="auth-btn danger" id="trickBatchReject" disabled>批量驳回</button>
           <button class="auth-btn" id="trickBatchClear" style="display:none">清除选择</button>
+          <span class="tb-sep"></span>
+          <button class="auth-btn primary" id="trickBatchAi">🤖 批量 AI 审核并自动通过</button>
+          <span class="tb-count" id="trickBatchAiStatus"></span>
         </div>
         <div id="trickList" class="trick-list"></div>
         <div class="pager" style="margin-top:10px">
@@ -311,7 +314,7 @@
 <script defer src="config.js?v=5" charset="utf-8"></script>
 <script defer src="common.js?v=2" charset="utf-8"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script defer src="sync.js?v=26" charset="utf-8"></script>
-<script defer src="admin.js?v=15" charset="utf-8"></script>
+<script defer src="sync.js?v=27" charset="utf-8"></script>
+<script defer src="admin.js?v=17" charset="utf-8"></script>
 </body>
 </html>

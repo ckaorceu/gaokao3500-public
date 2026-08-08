@@ -370,7 +370,8 @@ function maybeAutoGenerateTrick() {
   const t = tricks[w.name] || {};
   const hasUser = !!(t.assoc || t.root || t.homo || t.ex);
   const hasOfficial = !!(window.WORD_OVR_TRICK && window.WORD_OVR_TRICK[w.name]);
-  if (hasUser || hasOfficial) return; // 已有巧记则不生成
+  const hasApproved = !!(window.APPROVED_TRICKS && window.APPROVED_TRICKS[w.name]);
+  if (hasUser || hasOfficial || hasApproved) return; // 已有巧记（含已通过的公开巧记）则不生成
   if (autoGenDone.has(w.name)) return;
   autoGenDone.add(w.name);
   const entry = (typeof WORDS !== 'undefined' && WORDS[w.name]) || {};
@@ -397,8 +398,13 @@ function maybeAutoGenerateTrick() {
 function renderTrick() {
   const { w } = queue[idx];
   const t = tricks[w.name] || {};
-  // 若用户未写自己的巧记，使用后台「内容管理」设置的官方巧记作兜底
+  // 已通过的公开巧记（所有人可见，含访客）作兜底
   let assoc = t.assoc || '', root = t.root || '', homo = t.homo || '', ex = t.ex || '';
+  if ((!assoc || !root || !homo || !ex) && window.APPROVED_TRICKS && window.APPROVED_TRICKS[w.name]) {
+    const a = window.APPROVED_TRICKS[w.name];
+    assoc = assoc || a.assoc || ''; root = root || a.root || ''; homo = homo || a.homo || ''; ex = ex || a.ex || '';
+  }
+  // 后台「内容管理」设置的官方巧记作最终兜底
   if ((!assoc || !root || !homo || !ex) && window.WORD_OVR_TRICK && window.WORD_OVR_TRICK[w.name]) {
     const o = window.WORD_OVR_TRICK[w.name];
     assoc = assoc || o.assoc || ''; root = root || o.root || ''; homo = homo || o.homo || ''; ex = ex || o.ex || '';
@@ -857,6 +863,9 @@ function leBoot(d) {
   // 应用后台「内容管理」对词库的覆盖（影响展示与测验）
   Sync.loadWordOverrides().then(function (ovr) {
     Sync.applyWordOverrides(ovr);
+    return Sync.loadApprovedTricks();
+  }).then(function (appr) {
+    window.APPROVED_TRICKS = appr || {};
     SR = d.sr || {};
     tricks = d.tricks || {};
     queue = buildQueue();
@@ -870,7 +879,7 @@ function leBoot(d) {
     show();
     // 卡片渲染后再校正一次（最新开关值已由文件末尾的 Sync.onFlags 订阅保证）
     applyLearnGates();
-  });
+  }).catch(function (e) { console.error('学习页初始化失败', e); });
 }
 // 首屏防闪现：先用 localStorage 缓存的开关立即应用（不等登录态与 loadAll），
 // 网络结果回来后由 Sync.onFlags 校正。详见 flags-boot.js 的说明。

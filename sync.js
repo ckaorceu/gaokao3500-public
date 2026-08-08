@@ -1089,6 +1089,25 @@
     });
   }
 
+  // ---------- 已通过的公开巧记（所有人可读，含未登录访客） ----------
+  // 读取 tricks 表中 status='approved' 的行，返回 { word: {assoc,root,homo,ex} }，供练习页自动应用。
+  // RLS「approved tricks public read」策略已开放 anon/authenticated 读取 approved 行。
+  function loadApprovedTricks() {
+    if (!config()) return Promise.resolve({});
+    if (!sb) return Promise.resolve({});
+    return sb.from('tricks')
+      .select('word,assoc,root,homo,ex')
+      .eq('status', 'approved')
+      .then(function (r) {
+        if (r.error) return {};
+        var map = {};
+        (r.data || []).forEach(function (o) {
+          map[o.word] = { assoc: o.assoc || '', root: o.root || '', homo: o.homo || '', ex: o.ex || '' };
+        });
+        return map;
+      });
+  }
+
   // 通用 RPC 调用（后台管理用，受 RLS + SECURITY DEFINER 守卫保护）
   // 注意：Supabase 的 sb.rpc 返回 { data, error } 包装对象，
   // 这里统一解包为 data，出错时 reject（避免后台把包装对象当数组用导致 .reduce is not a function）。
@@ -1134,6 +1153,7 @@
     resetAll: resetAll,
     changePassword: changePassword, usernameAvailable: usernameAvailable,
     amIAdmin: amIAdmin, loadWordOverrides: loadWordOverrides, listWordOverrides: listWordOverrides, applyWordOverrides: applyWordOverrides,
+    loadApprovedTricks: loadApprovedTricks,
     rpc: rpc, getWordOverride: getWordOverride, saveWordOverride: saveWordOverride, deleteWordOverride: deleteWordOverride,
     onStudy: onStudy, streak: computeStreak, jwt: function () { return accessToken; },
     // 后台「功能开关」读取接口（feature_flags 表，由后台「🎛️ 运营」管理）
