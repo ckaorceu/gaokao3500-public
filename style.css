@@ -685,6 +685,8 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 6px 10px;
+  flex-wrap: wrap;
   font-size: 15px;
   font-weight: 600;
   margin-bottom: 10px;
@@ -712,6 +714,13 @@ html, body {
 }
 .trick-body .tv { color: #b45309; }
 .trick-empty { color: var(--muted); font-size: 13px; padding: 4px 0; }
+
+/* 巧记：练习时先隐藏，选/答完答案后再显示（用户偏好，localStorage 持久化） */
+.trick-hint { display: none; font-size: 13px; color: var(--muted); padding: 8px 2px 0; }
+.trick-panel.trick-hidden .trick-body { display: none; }
+.trick-panel.trick-hidden .trick-hint { display: block; }
+#trickHideToggle.active { color: var(--primary, #4f46e5); font-weight: 600; }
+#trickAutoBtn.active { color: var(--primary, #4f46e5); font-weight: 600; }
 
 /* 巧记编辑弹窗 */
 dialog {

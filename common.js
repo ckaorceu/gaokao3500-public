@@ -75,7 +75,7 @@
       if (el && el.innerHTML !== undefined) {
         el.innerHTML = '<div class="empty" style="padding:40px;text-align:center;">' +
           '<p style="margin-bottom:14px">加载失败：' + escapeHtml(msg) + '</p>' +
-          '<button class="auth-btn ok" onclick="location.reload()">重试</button></div>';
+          '<button class="auth-btn ok" data-act="reloadPage">重试</button></div>';
       }
     });
   }
@@ -86,5 +86,12 @@
   root.localDateStr = localDateStr;
   root.shuffle = shuffle;
   root.toast = toast;
+  // 重试按钮（严格 CSP 下内联 onclick 会被拦截，改用事件委托）
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-act]');
+    if (!t) return;
+    if (t.getAttribute('data-act') === 'reloadPage') { e.preventDefault(); location.reload(); }
+  });
+
   root.bootSafe = bootSafe;
 })(typeof window !== 'undefined' ? window : this);

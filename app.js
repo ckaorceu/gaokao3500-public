@@ -296,9 +296,28 @@ function renderStats() {
     <div class="level-group">
       <div class="level-sub">复习等级（跨模式最高）</div>
       <div class="level-row">
-        ${[1,2,3,4].map(i => `<div class="level-chip" style="cursor:pointer" onclick="filterByL(${i})"><div class="name">L${i}</div><div class="count">${counts[i]}</div></div>`).join('')}
+        ${[1,2,3,4].map(i => `<div class="level-chip" style="cursor:pointer" data-act="filterByL" data-l="${i}"><div class="name">L${i}</div><div class="count">${counts[i]}</div></div>`).join('')}
       </div>
     </div>`;
+}
+
+function bindAppDelegation() {
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-act]');
+    if (!t) return;
+    var act = t.getAttribute('data-act');
+    if (act === 'filterByL') {
+      e.preventDefault();
+      filterByL(parseInt(t.getAttribute('data-l'), 10) || 0);
+    } else if (act === 'speak') {
+      e.preventDefault();
+      e.stopPropagation();
+      speakText(t.getAttribute('data-word'), getAccent());
+    } else if (act === 'startUnit') {
+      e.preventDefault();
+      startUnit(parseInt(t.getAttribute('data-from'), 10), parseInt(t.getAttribute('data-to'), 10));
+    }
+  });
 }
 
 function filterByL(lv) {
@@ -353,7 +372,7 @@ function renderList() {
     const meaning = (w.pos ? w.pos + ' ' : '') + (w.meaning || '');
     return `<a class="word-card" data-level="${lv}" data-name="${w.name}" href="learn.html?mode=${encodeURIComponent(selectedMode)}&w=${encodeURIComponent(w.name)}">
       <span class="level-dot" title="${lv ? 'L' + lv : '未学'}"></span>
-      <div class="name">${w.name}<button class="speak-mini" type="button" data-word="${escapeHtml(w.name)}" onclick="event.preventDefault();event.stopPropagation();speakText(this.getAttribute('data-word'), getAccent())" title="朗读">🔊</button></div>
+      <div class="name">${w.name}<button class="speak-mini" type="button" data-word="${escapeHtml(w.name)}" data-act="speak" title="朗读">🔊</button></div>
       <div class="phonetic">${escapeHtml(phonetic)}</div>
       <div class="meaning">${escapeHtml(meaning)}</div>
       ${w.ex ? '<div class="ex">📖 ' + escapeHtml(w.ex) + '</div>' : ''}
@@ -405,7 +424,7 @@ function renderUnitProgress() {
   el.innerHTML = units.map(function (u) {
     var idx = Math.floor(u.i / SIZE) + 1;
     var end = Math.min(u.i + SIZE, total) - 1;
-    return '<div class="unit-row" onclick="startUnit(' + u.i + ',' + end + ')">' +
+    return '<div class="unit-row" data-act="startUnit" data-from="' + u.i + '" data-to="' + end + '">' +
       '<div class="unit-name">第 ' + idx + ' 单元</div>' +
       '<div class="unit-bars">' +
         '<div class="ubar blue" style="width:' + u.hist.toFixed(0) + '%"></div>' +
@@ -465,6 +484,7 @@ let booted = false;
 function boot(d) {
   if (booted) return;
   booted = true;
+  bindAppDelegation();
   // CSP 兼容：unitHead 内联 onclick 改为 JS 绑定（严格 CSP 下内联事件会被拦截）
   (function () {
     var uh = document.getElementById('unitHead');

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>站长后台 · 高考3500词</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="style.css?v=31">
+<link rel="stylesheet" href="style.css?v=35">
 </head>
 <body>
 <header class="topbar">
@@ -288,9 +288,19 @@
         <p class="muted">区分<strong>普通用户</strong>（受每日上限约束）与<strong>管理员</strong>（默认不受限）。计数含 AI 巧记与学习报告/计划的真实调用。</p>
         <div class="table-wrap">
           <table class="admin-table">
-            <thead><tr><th>邮箱</th><th>用户名</th><th>今日次数</th><th>累计次数</th></tr></thead>
-            <tbody id="aiUsageBody"><tr><td colspan="4" class="empty">加载中…</td></tr></tbody>
+            <thead><tr><th>邮箱</th><th>用户名</th><th>今日次数</th><th>累计次数</th><th>今日Token</th><th>累计Token</th></tr></thead>
+            <tbody id="aiUsageBody"><tr><td colspan="6" class="empty">加载中…</td></tr></tbody>
           </table>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>🌐 全局 AI 统计</h3></div>
+        <p class="muted">全站累计与今日的 API 调用量、Token 消耗（输入 + 输出）。</p>
+        <div style="display:flex; gap:18px; flex-wrap:wrap;" id="aiGlobalStats">
+          <div><div style="font-size:22px;font-weight:700" id="gsTotalCalls">—</div><div class="muted">总 API 调用量</div></div>
+          <div><div style="font-size:22px;font-weight:700" id="gsTotalTokens">—</div><div class="muted">总 Token（输入/输出）</div></div>
+          <div><div style="font-size:22px;font-weight:700" id="gsTodayCalls">—</div><div class="muted">今日调用量</div></div>
+          <div><div style="font-size:22px;font-weight:700" id="gsTodayTokens">—</div><div class="muted">今日 Token</div></div>
         </div>
       </div>
     </div>
@@ -299,9 +309,9 @@
 
 <script defer src="words.js" charset="utf-8"></script>
 <script defer src="config.js?v=5" charset="utf-8"></script>
-<script defer src="common.js?v=1" charset="utf-8"></script>
+<script defer src="common.js?v=2" charset="utf-8"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script defer src="sync.js?v=26" charset="utf-8"></script>
-<script defer src="admin.js?v=13" charset="utf-8"></script>
+<script defer src="admin.js?v=15" charset="utf-8"></script>
 </body>
 </html>

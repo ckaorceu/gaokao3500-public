@@ -297,10 +297,10 @@ window.onAccentChange = function () { try { if (typeof show === 'function') show
 
 // 评级按钮（共用）
 function rateButtons() {
-  return `<button class="rbtn warn" onclick="rate(1)">不会</button>
-    <button class="rbtn" onclick="rate(2)">模糊</button>
-    <button class="rbtn" onclick="rate(3)">一般</button>
-    <button class="rbtn primary" onclick="rate(4)">熟记</button>`;
+  return `<button class="rbtn warn" data-act="rate" data-lv="1">不会</button>
+    <button class="rbtn" data-act="rate" data-lv="2">模糊</button>
+    <button class="rbtn" data-act="rate" data-lv="3">一般</button>
+    <button class="rbtn primary" data-act="rate" data-lv="4">熟记</button>`;
 }
 
 
@@ -323,6 +323,75 @@ function buildOptions(correctWord, correctText, distractorText) {
 }
 
 // 显示选择题（通用）
+
+// 巧记：练习时先隐藏，选/答完答案后再显示（用户偏好，localStorage 持久化）
+const TRICK_HIDE_KEY = 'gaokao3500.trickHideUntilAnswer';
+let trickRevealed = false; // 当前词是否已揭示答案
+function getTrickHide() {
+  try { return localStorage.getItem(TRICK_HIDE_KEY) !== '0'; } catch (e) { return true; }
+}
+function setTrickHide(v) {
+  try { localStorage.setItem(TRICK_HIDE_KEY, v ? '1' : '0'); } catch (e) {}
+  const btn = document.getElementById('trickHideToggle');
+  if (btn) btn.classList.toggle('active', v);
+  applyTrickHiddenState();
+}
+function applyTrickHiddenState() {
+  const panel = document.getElementById('trickPanel');
+  if (!panel) return;
+  if (panel.style.display === 'none') return; // 后台关闭巧记时整体隐藏，不处理
+  const hide = getTrickHide() && !trickRevealed;
+  panel.classList.toggle('trick-hidden', hide);
+}
+function revealTrickNow() { // 选/答完答案时调用
+  trickRevealed = true;
+  applyTrickHiddenState();
+}
+
+// 巧记：自动用 AI 为「无巧记」的词生成（用户偏好，localStorage 持久化；需登录，受 AI 配额限制）
+const TRICK_AUTO_KEY = 'gaokao3500.trickAutoGen';
+const autoGenDone = new Set(); // 本次会话已尝试自动生成的词，避免重复调用
+function getTrickAuto() {
+  try { return localStorage.getItem(TRICK_AUTO_KEY) === '1'; } catch (e) { return false; }
+}
+function setTrickAuto(v) {
+  try { localStorage.setItem(TRICK_AUTO_KEY, v ? '1' : '0'); } catch (e) {}
+  const btn = document.getElementById('trickAutoBtn');
+  if (btn) btn.classList.toggle('active', v);
+  if (v && queue && queue[idx]) maybeAutoGenerateTrick(); // 开启时立即为当前词尝试
+}
+function maybeAutoGenerateTrick() {
+  if (!getTrickAuto()) return;
+  const it = queue[idx];
+  if (!it) return;
+  const w = it.w;
+  const token = (typeof Sync !== 'undefined' && Sync.jwt) ? Sync.jwt() : '';
+  if (!token) return; // 未登录不自动生成（AI 需鉴权）
+  const t = tricks[w.name] || {};
+  const hasUser = !!(t.assoc || t.root || t.homo || t.ex);
+  const hasOfficial = !!(window.WORD_OVR_TRICK && window.WORD_OVR_TRICK[w.name]);
+  if (hasUser || hasOfficial) return; // 已有巧记则不生成
+  if (autoGenDone.has(w.name)) return;
+  autoGenDone.add(w.name);
+  const entry = (typeof WORDS !== 'undefined' && WORDS[w.name]) || {};
+  const phon = entry.phon || '';
+  const mean = entry.mean || entry.def || '';
+  fetch('https://bkuvirojzuetweondgrx.supabase.co/functions/v1/ai_trick', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ word: w.name, phon: phon, mean: mean })
+  }).then(function (r) { return r.json(); }).then(function (d) {
+    if (d && d.error) return; // 配额/错误静默跳过
+    const r = (d && d.result) || {};
+    if (!r.assoc && !r.root && !r.homo && !r.ex) return;
+    const cur = tricks[w.name] || {};
+    tricks[w.name] = Object.assign({}, cur, {
+      assoc: r.assoc || '', root: r.root || '', homo: r.homo || '', ex: r.ex || ''
+    });
+    if (typeof Sync !== 'undefined' && Sync.saveTricksNow) Sync.saveTricksNow(tricks);
+    renderTrick(); // 生成完成，刷新巧记面板（若当前已显示则立即可见）
+  }).catch(function () {});
+}
 
 // 渲染巧记面板
 function renderTrick() {
@@ -378,6 +447,9 @@ function show() {
   }
   renderFlagBar(w.name);
   applyLearnGates();
+  trickRevealed = false;          // 新词：重置为「未揭示」
+  applyTrickHiddenState();
+  maybeAutoGenerateTrick();
 }
 
 // 后台功能开关：按 flag 显隐学习页各模块（每张卡渲染后调用）
@@ -403,12 +475,12 @@ function showMeaning(w) {
   $('#flashcard').innerHTML = `
     <div class="word-head">
       <div class="w">${escapeHtml(w.name)}</div>
-      <button class="speak" onclick="speakWord()" title="朗读">🔊</button>
+      <button class="speak" data-act="speakWord" title="朗读">🔊</button>
     </div>
     <div class="ph">${escapeHtml(formatPhon(w))}</div>
     <div class="mn" id="mn" style="display:none">${(w.pos ? w.pos + ' ' : '') + escapeHtml(w.meaning || '')}${exampleHtml(w)}</div>`;
   $('#actions').innerHTML = `
-    <button class="primary" id="revealBtn" onclick="revealMeaning()">显示释义</button>
+    <button class="primary" id="revealBtn" data-act="revealMeaning">显示释义</button>
     <div id="rateWrap" style="display:none;gap:10px;flex-direction:column;align-items:center">
       <div class="rate-prompt">自测：你刚才记住了吗？这决定下次复习时间</div>
       <div class="rate-row">${rateButtons()}</div>
@@ -419,6 +491,7 @@ function revealMeaning() {
   $('#mn').style.display = 'block';
   $('#revealBtn').style.display = 'none';
   $('#rateWrap').style.display = 'flex';
+  revealTrickNow();
 }
 
 // 模式二：看义记词
@@ -427,12 +500,12 @@ function showWord(w) {
     <div class="ph">根据释义写出单词</div>
     <div class="mn">${(w.pos ? w.pos + ' ' : '') + escapeHtml(w.meaning || '')}</div>
     <div class="answer-input">
-      <input id="typeInput" type="text" autocomplete="off" placeholder="输入英文单词…" onkeydown="if(event.key==='Enter')checkWord()">
-      <button class="primary" onclick="checkWord()">核对</button>
+      <input id="typeInput" type="text" autocomplete="off" placeholder="输入英文单词…" data-enter-act="checkWord">
+      <button class="primary" data-act="checkWord">核对</button>
     </div>
     <div class="check-result" id="checkResult"></div>
     <div id="revealWord" style="display:none">
-      <div class="word-head"><div class="w">${escapeHtml(w.name)}</div><button class="speak" onclick="speakWord()" title="朗读">🔊</button></div>
+      <div class="word-head"><div class="w">${escapeHtml(w.name)}</div><button class="speak" data-act="speakWord" title="朗读">🔊</button></div>
       <div class="ph">${escapeHtml(formatPhon(w))}</div>${exampleHtml(w)}
     </div>`;
   setTimeout(() => $('#typeInput') && $('#typeInput').focus(), 30);
@@ -448,6 +521,7 @@ function checkWord() {
   $('#checkResult').className = 'check-result ' + (ok ? 'ok' : 'bad');
   $('#revealWord').style.display = 'block';
   $('#rateWrap').style.display = 'flex';
+  revealTrickNow();
 }
 
 // 模式三：听音拼写
@@ -455,9 +529,9 @@ function showSpelling(w) {
   $('#flashcard').innerHTML = `
     <div class="ph">听发音，写出拼写</div>
     <div class="answer-input">
-      <button class="speak big" onclick="speakWord()" title="再听一次">🔊 播放</button>
-      <input id="typeInput" type="text" autocomplete="off" placeholder="输入听到的单词…" onkeydown="if(event.key==='Enter')checkSpelling()">
-      <button class="primary" onclick="checkSpelling()">核对</button>
+      <button class="speak big" data-act="speakWord" title="再听一次">🔊 播放</button>
+      <input id="typeInput" type="text" autocomplete="off" placeholder="输入听到的单词…" data-enter-act="checkSpelling">
+      <button class="primary" data-act="checkSpelling">核对</button>
     </div>
     <div class="check-result" id="checkResult"></div>
     <div id="revealWord" style="display:none">
@@ -473,11 +547,11 @@ function showSpelling(w) {
 function showQuizEn(w) {
   const opts = buildOptions(w, w.meaning || '(无释义)', x => x.meaning || '(无释义)');
   const btns = opts.map((o, i) =>
-    `<button class="rbtn opt" data-i="${i}" data-correct="${o.correct ? 1 : 0}" onclick="answerQuiz(this, ${o.correct})">${i + 1}. ${escapeHtml(o.text)}</button>`
+    `<button class="rbtn opt" data-i="${i}" data-act="answerQuiz" data-correct="${o.correct ? 1 : 0}">${i + 1}. ${escapeHtml(o.text)}</button>`
   ).join('');
   $('#flashcard').innerHTML = `
     <div class="ph">选择正确的中文释义</div>
-    <div class="word-head"><div class="w">${escapeHtml(w.name)}</div><button class="speak" onclick="speakWord()" title="朗读">🔊</button></div>
+    <div class="word-head"><div class="w">${escapeHtml(w.name)}</div><button class="speak" data-act="speakWord" title="朗读">🔊</button></div>
     <div class="ph">${escapeHtml(formatPhon(w))}</div>
     <div class="quiz-opts" id="quizOpts">${btns}</div>
     <div class="check-result" id="checkResult"></div>
@@ -491,7 +565,7 @@ function showQuizEn(w) {
 function showQuizCn(w) {
   const opts = buildOptions(w, w.name, x => x.name);
   const btns = opts.map((o, i) =>
-    `<button class="rbtn opt" data-i="${i}" data-correct="${o.correct ? 1 : 0}" onclick="answerQuiz(this, ${o.correct})">${i + 1}. ${escapeHtml(o.text)}</button>`
+    `<button class="rbtn opt" data-i="${i}" data-act="answerQuiz" data-correct="${o.correct ? 1 : 0}">${i + 1}. ${escapeHtml(o.text)}</button>`
   ).join('');
   $('#flashcard').innerHTML = `
     <div class="ph">选择正确的英文单词</div>
@@ -527,6 +601,7 @@ function answerQuiz(btn, correct) {
   }
   $('#revealWord').style.display = 'block';
   $('#rateWrap').style.display = 'flex';
+  revealTrickNow();
 }
 
 function checkSpelling() {
@@ -538,6 +613,7 @@ function checkSpelling() {
   $('#checkResult').className = 'check-result ' + (ok ? 'ok' : 'bad');
   $('#revealWord').style.display = 'block';
   $('#rateWrap').style.display = 'flex';
+  revealTrickNow();
 }
 
 function rate(targetLv) {
@@ -725,6 +801,34 @@ document.addEventListener('keydown', e => {
 // 不再拦截 beforeunload：进度已通过 saveSRNow/saveTricksNow 即时落云，
 // 且 pagehide/visibilitychange 会兜底 flush()，无需再弹"更改未保存"确认框。
 // 启动：从云端或本地加载数据后再构建队列并渲染（只执行一次，避免双重 buildQueue/show）
+// 内联事件处理器（onclick 等 HTML 属性）会被严格 CSP 拦截；
+// 改用事件委托 + data-act 绑定，严格 CSP 下按钮仍可点击。
+function bindCardDelegation() {
+  if (window.__cardDelegBound) return;
+  window.__cardDelegBound = true;
+  var ACT = {
+    revealMeaning: revealMeaning,
+    speakWord: speakWord,
+    checkWord: checkWord,
+    checkSpelling: checkSpelling,
+    answerQuiz: function (el) { answerQuiz(el, el.dataset.correct === '1'); },
+    rate: function (el) { rate(parseInt(el.dataset.lv, 10) || 0); }
+  };
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('[data-act]');
+    if (!el) return;
+    var fn = ACT[el.dataset.act];
+    if (fn) { e.preventDefault(); fn(el); }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') return;
+    var el = e.target;
+    if (el && el.matches && el.matches('input[data-enter-act]')) {
+      var fn = ACT[el.dataset.enterAct];
+      if (fn) { e.preventDefault(); fn(el); }
+    }
+  });
+}
 let leBooted = false;
 function leBoot(d) {
   if (leBooted) return;
@@ -734,6 +838,14 @@ function leBoot(d) {
     var b;
     if ((b = document.getElementById('curveBtn'))) b.onclick = showCurve;
     if ((b = document.getElementById('trickEditBtn'))) b.onclick = openTrick;
+    if ((b = document.getElementById('trickHideToggle'))) {
+      b.classList.toggle('active', getTrickHide());
+      b.onclick = function () { setTrickHide(!getTrickHide()); };
+    }
+    if ((b = document.getElementById('trickAutoBtn'))) {
+      b.classList.toggle('active', getTrickAuto());
+      b.onclick = function () { setTrickAuto(!getTrickAuto()); };
+    }
     if ((b = document.getElementById('trickCancelBtn'))) b.onclick = closeTrick;
     if ((b = document.getElementById('trickSaveBtn'))) b.onclick = saveTrick;
     if ((b = document.getElementById('trickAiBtn'))) b.onclick = aiGenerateTrick;
@@ -763,6 +875,7 @@ function leBoot(d) {
 // 首屏防闪现：先用 localStorage 缓存的开关立即应用（不等登录态与 loadAll），
 // 网络结果回来后由 Sync.onFlags 校正。详见 flags-boot.js 的说明。
 applyLearnGates();
+  bindCardDelegation();
 if (typeof Sync.onFlags === 'function') Sync.onFlags(applyLearnGates);
 Sync.ensureFlags();
 Sync.onAuth(() => Sync.loadAll().then(leBoot).catch(e => { console.error(e); toast('学习页加载失败，请刷新重试'); }));

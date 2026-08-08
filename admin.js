@@ -144,7 +144,7 @@
     else if (tab === 'export') initExport();
     else if (tab === 'tricks') loadTricksMod();
     else if (tab === 'ops') loadOps();
-    else if (tab === 'ai') { loadAICfg(); loadAIUsage(); loadBanList(); }
+    else if (tab === 'ai') { loadAICfg(); loadAIUsage(); loadBanList(); loadAIGlobalStats(); }
   }
 
   // ---------- 数据看板 ----------
@@ -166,7 +166,7 @@
     }).catch(function (e) {
       const msg = '加载失败：' + escapeHtml(e && e.message ? e.message : e);
       $('#dashCards').innerHTML = '<div class="empty" style="grid-column:1/-1">' + msg +
-        ' <button class="auth-btn" onclick="window.__reloadDash()">重试</button></div>';
+        ' <button class="auth-btn" data-act="reloadDash">重试</button></div>';
       $('#dashMastery').innerHTML = $('#dashActive').innerHTML = $('#dashEngage').innerHTML = $('#dashStruggle').innerHTML = '';
     });
   }
@@ -540,7 +540,7 @@
     }).catch(function (e) {
       const msg = '加载失败：' + escapeHtml(e && e.message ? e.message : e);
       $('#anCards').innerHTML = '<div class="empty" style="grid-column:1/-1">' + msg +
-        ' <button class="auth-btn" onclick="window.__reloadAnalytics()">重试</button></div>';
+        ' <button class="auth-btn" data-act="reloadAnalytics">重试</button></div>';
       $('#anRetention').innerHTML = $('#anTrend').innerHTML = $('#anHeat').innerHTML = $('#anLeaders').innerHTML = '';
     });
   }
@@ -835,24 +835,41 @@
   function loadAIUsage() {
     const body = $('#aiUsageBody');
     if (!body) return;
-    body.innerHTML = '<tr><td colspan="4" class="empty">加载中…</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" class="empty">加载中…</td></tr>';
     Sync.rpc('admin_ai_usage', { p_limit: 30 }).then(function (rows) {
       rows = rows || [];
       if (!rows.length) {
-        body.innerHTML = '<tr><td colspan="4" class="empty">暂无 AI 使用记录</td></tr>';
+        body.innerHTML = '<tr><td colspan="6" class="empty">暂无 AI 使用记录</td></tr>';
         return;
       }
       body.innerHTML = rows.map(function (r) {
+        const todayTok = (r.today_prompt_tokens || 0) + (r.today_completion_tokens || 0);
+        const totalTok = (r.total_prompt_tokens || 0) + (r.total_completion_tokens || 0);
         return '<tr>' +
           '<td>' + escapeHtml(r.email || '(无邮箱)') + '</td>' +
           '<td>' + escapeHtml(r.username || '') + '</td>' +
           '<td>' + (r.today_cnt != null ? r.today_cnt : 0) + '</td>' +
           '<td>' + (r.total_cnt != null ? r.total_cnt : 0) + '</td>' +
+          '<td>' + todayTok + '</td>' +
+          '<td>' + totalTok + '</td>' +
           '</tr>';
       }).join('');
     }).catch(function (e) {
-      body.innerHTML = '<tr><td colspan="4" class="empty">加载失败：' + escapeHtml(e && e.message ? e.message : e) + '</td></tr>';
+      body.innerHTML = '<tr><td colspan="6" class="empty">加载失败：' + escapeHtml(e && e.message ? e.message : e) + '</td></tr>';
     });
+  }
+
+  function loadAIGlobalStats() {
+    Sync.rpc('admin_ai_global_stats').then(function (s) {
+      s = s || {};
+      const set = function (id, v) { const el = document.getElementById(id); if (el) el.textContent = v; };
+      const totalTok = (s.total_prompt_tokens || 0) + (s.total_completion_tokens || 0);
+      const todayTok = (s.today_prompt_tokens || 0) + (s.today_completion_tokens || 0);
+      set('gsTotalCalls', s.total_calls != null ? s.total_calls : '—');
+      set('gsTotalTokens', totalTok + '（输' + (s.total_prompt_tokens || 0) + '/出' + (s.total_completion_tokens || 0) + '）');
+      set('gsTodayCalls', s.today_calls != null ? s.today_calls : '—');
+      set('gsTodayTokens', todayTok);
+    }).catch(function () {});
   }
 
   function loadAICfg() {
@@ -1144,7 +1161,7 @@
     const aiS = $('#aiSave'), aiT = $('#aiTest'), aiU = $('#aiUsageRefresh');
     if (aiS && !aiS._bound) { aiS._bound = true; aiS.onclick = saveAICfg; }
     if (aiT && !aiT._bound) { aiT._bound = true; aiT.onclick = testAI; }
-    if (aiU && !aiU._bound) { aiU._bound = true; aiU.onclick = loadAIUsage; }
+    if (aiU && !aiU._bound) { aiU._bound = true; aiU.onclick = function () { loadAIUsage(); loadAIGlobalStats(); }; }
     const bB = $('#banBtn'), uB = $('#unbanBtn');
     if (bB && !bB._bound) { bB._bound = true; bB.onclick = banUser; }
     if (uB && !uB._bound) { uB._bound = true; uB.onclick = function () {
@@ -1172,6 +1189,17 @@
       });
     }
   }
+
+  function bindAdminDelegation() {
+    document.addEventListener('click', function (e) {
+      var t = e.target.closest('[data-act]');
+      if (!t) return;
+      var act = t.getAttribute('data-act');
+      if (act === 'reloadDash') { e.preventDefault(); window.__reloadDash(); }
+      else if (act === 'reloadAnalytics') { e.preventDefault(); window.__reloadAnalytics(); }
+    });
+  }
+  bindAdminDelegation();
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () { bindContent(); init(); });
