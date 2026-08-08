@@ -1128,14 +1128,13 @@
   }
 
   // ---------- 已通过的公开巧记（所有人可读，含未登录访客） ----------
-  // 读取 tricks 表中 status='approved' 的行，返回 { word: {assoc,root,homo,ex} }，供练习页自动应用。
-  // RLS「approved tricks public read」策略已开放 anon/authenticated 读取 approved 行。
+  // 读取 tricks_public 视图（status='approved' 且剔除 user_id 等内部字段，防 PII 泄露），
+  // 返回 { word: {assoc,root,homo,ex} }，供练习页自动应用。
   function loadApprovedTricks() {
     if (!config()) return Promise.resolve({});
     if (!sb) return Promise.resolve({});
-    return sb.from('tricks')
+    return sb.from('tricks_public')
       .select('word,assoc,root,homo,ex')
-      .eq('status', 'approved')
       .then(function (r) {
         if (r.error) return {};
         var map = {};
