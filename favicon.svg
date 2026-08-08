@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- favicon.svg · 高考3500词 · 字母大脑 + 灯泡
+     设计：圆角青绿渐变背景 + 灯泡轮廓 + 中央字母"A"(艾宾浩斯/Association)
+     配色：青绿渐变 #14b8a6 → #06b6d4（呼应设计图）；灯丝/字母 #ffffff
+     尺寸：viewBox 0 0 64 64，缩放自适应 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#14b8a6"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+    <linearGradient id="bulb" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.85"/>
+    </linearGradient>
+  </defs>
+  <!-- 圆角矩形背景（app icon 圆角） -->
+  <rect x="0" y="0" width="64" height="64" rx="14" ry="14" fill="url(#bg)"/>
+  <!-- 灯泡外轮廓（顶部球形 + 颈部 + 螺纹底座 + 基座） -->
+  <path d="M32 9
+           C23.4 9 16.5 15.7 16.5 24
+           C16.5 28.6 18.4 32.1 21.2 34.4
+           C22.6 35.5 23.3 37.2 23.3 39
+           L23.3 41.2
+           C23.3 41.9 23.9 42.5 24.6 42.5
+           L39.4 42.5
+           C40.1 42.5 40.7 41.9 40.7 41.2
+           L40.7 39
+           C40.7 37.2 41.4 35.5 42.8 34.4
+           C45.6 32.1 47.5 28.6 47.5 24
+           C47.5 15.7 40.6 9 32 9 Z"
+        fill="url(#bulb)" stroke="#ffffff" stroke-width="0.6"/>
+  <!-- 螺纹/卡口 -->
+  <rect x="24.8" y="44" width="14.4" height="2.2" rx="1" fill="#ffffff" opacity="0.85"/>
+  <rect x="25.6" y="47" width="12.8" height="2.2" rx="1" fill="#ffffff" opacity="0.85"/>
+  <!-- 底部基座（梯形） -->
+  <path d="M27.5 50 L36.5 50 L34.8 55 L29.2 55 Z" fill="#ffffff" opacity="0.9"/>
+  <!-- 中央字母"A"（艾宾浩斯/Association） -->
+  <path d="M32 14
+           L25 30
+           L27.7 30
+           L29 26.5
+           L35 26.5
+           L36.3 30
+           L39 30 Z
+           M30.3 24.2
+           L32 19.5
+           L33.7 24.2 Z"
+        fill="#0e7490"/>
+</svg>

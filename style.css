@@ -75,7 +75,6 @@ html, body {
 .brand { font-weight: 700; font-size: 17px; letter-spacing: -.2px; }
 .stats { font-size: 13px; color: var(--muted); }
 .ann-bar {
-  position: sticky; top: 0; z-index: 9;
   display: flex; align-items: center; gap: 10px;
   margin: 0 auto; max-width: 960px; padding: 9px 18px;
   background: var(--accent-grad, #2f6bff); color: #fff;
@@ -93,7 +92,6 @@ html, body {
 }
 .ann-close:hover { background: rgba(255,255,255,.4); }
 .maint-bar {
-  position: sticky; top: 0; z-index: 9;
   margin: 0 auto; max-width: 960px; padding: 8px 18px;
   background: var(--warning-bg, #fff3cd); color: #7a5b00;
   border-bottom: 1px solid var(--warning-border, #ffd97a);
