@@ -49,11 +49,26 @@ const $$ = (s) => Array.from(document.querySelectorAll(s));
 let activeLetter = 'all';
 let filterMode = 'all';
 let searchText = '';
-let selectedMode = 'meaning';
-let selectedOrder = 'seq';
-let selectedDrill = 'all';
-let selectedRepeat = 'off';
-let selectedRepeatMax = 3;
+// 练习配置本地持久化：模式/顺序/范围/重复记忆/重复上限（localStorage）
+const CFG_KEY = 'gaokao3500.learnCfg';
+function loadLearnCfg() {
+  try { return JSON.parse(localStorage.getItem(CFG_KEY)) || {}; } catch (e) { return {}; }
+}
+function saveLearnCfg() {
+  try {
+    localStorage.setItem(CFG_KEY, JSON.stringify({
+      mode: selectedMode, order: selectedOrder, drill: selectedDrill,
+      repeat: selectedRepeat, repeatMax: selectedRepeatMax
+    }));
+  } catch (e) {}
+}
+const __cfg = loadLearnCfg();
+const __VALID_MODES = ['meaning','word','spelling','quizEn','quizCn'];
+let selectedMode = (__VALID_MODES.indexOf(__cfg.mode) >= 0) ? __cfg.mode : 'meaning';
+let selectedOrder = (['seq','shuffle'].indexOf(__cfg.order) >= 0) ? __cfg.order : 'seq';
+let selectedDrill = (['all','weak','wrong'].indexOf(__cfg.drill) >= 0) ? __cfg.drill : 'all';
+let selectedRepeat = (['off','on'].indexOf(__cfg.repeat) >= 0) ? __cfg.repeat : 'off';
+let selectedRepeatMax = (typeof __cfg.repeatMax === 'number' && (__cfg.repeatMax === -1 || __cfg.repeatMax > 0)) ? __cfg.repeatMax : 3;
 let listMode = 'all';     // all | hard（重难词本）
 let sortMode = 'default'; // default | shuffle | rate | reviews
 // 单词列表按需加载：默认不渲染，点击「列出单词」后分页展示
@@ -86,6 +101,7 @@ function renderModePicker() {
     if (!chip) return;
     selectedMode = chip.dataset.mode;
     $$('#modePicker .mode-chip').forEach(c => c.classList.toggle('active', c.dataset.mode === selectedMode));
+    saveLearnCfg();
   });
   // 顺序 / 乱序
   const oc = $('#orderChips');
@@ -94,6 +110,7 @@ function renderModePicker() {
     if (!chip) return;
     selectedOrder = chip.dataset.order;
     $$('#orderChips .order-chip').forEach(c => c.classList.toggle('active', c.dataset.order === selectedOrder));
+    saveLearnCfg();
   });
   // 范围：全部 / 只练未掌握
   const dc2 = $('#drillChips');
@@ -102,6 +119,7 @@ function renderModePicker() {
     if (!chip) return;
     selectedDrill = chip.dataset.drill;
     $$('#drillChips .drill-chip').forEach(c => c.classList.toggle('active', c.dataset.drill === selectedDrill));
+    saveLearnCfg();
   });
   // 重复记忆开关：关 / 开
   const rc = $('#repeatChips');
@@ -111,6 +129,7 @@ function renderModePicker() {
     selectedRepeat = chip.dataset.repeat;
     $$('#repeatChips .drill-chip').forEach(c => c.classList.toggle('active', c.dataset.repeat === selectedRepeat));
     $('#repeatMaxRow').style.display = selectedRepeat === 'on' ? 'flex' : 'none';
+    saveLearnCfg();
   });
   // 重复次数上限
   const rmc = $('#repeatMaxChips');
@@ -119,6 +138,7 @@ function renderModePicker() {
     if (!chip) return;
     selectedRepeatMax = parseInt(chip.dataset.max, 10);
     $$('#repeatMaxChips .drill-chip').forEach(c => c.classList.toggle('active', c.dataset.max === chip.dataset.max));
+    saveLearnCfg();
   });
   $('#startBtn').addEventListener('click', () => {
     const names = currentFilteredNames();
@@ -138,6 +158,21 @@ function renderModePicker() {
   });
   // 待复习合计提示
   $('#dueTotal').textContent = totalDue();
+  // 回填本地持久化的练习配置：同步静态 chips 的高亮态（order/drill/repeat/repeatMax 是 HTML 静态渲染，需 JS 设初始 active）
+  syncChipActive('#orderChips', '.order-chip', 'order', selectedOrder);
+  syncChipActive('#drillChips', '.drill-chip', 'drill', selectedDrill);
+  syncChipActive('#repeatChips', '.drill-chip', 'repeat', selectedRepeat);
+  syncChipActive('#repeatMaxChips', '.drill-chip', 'max', String(selectedRepeatMax));
+  const _rmr = $('#repeatMaxRow');
+  if (_rmr) _rmr.style.display = selectedRepeat === 'on' ? 'flex' : 'none';
+}
+// 按数据属性值给一组静态 chips 设置 active 态（用于回填本地持久化配置）
+function syncChipActive(containerId, selector, dataKey, value) {
+  const c = $(containerId);
+  if (!c) return;
+  c.querySelectorAll(selector).forEach(el => {
+    el.classList.toggle('active', el.getAttribute('data-' + dataKey) === value);
+  });
 }
 
 function filteredItems() {
@@ -186,6 +221,11 @@ function sortItems(items) {
 }
 // 重难词本：作为「用户可开关」的筛选项。开启后单词表（及开始练习）只显示重难词，状态持久化。
 function setListMode(m, reveal) {
+  if (m === 'hard' && !(window.Sync && typeof Sync.isMember === 'function' && Sync.isMember())) {
+    alert('👑 「重难词本」为会员专属功能，请联系管理员开通会员后使用。');
+    var hc = document.getElementById('hardToggle'); if (hc) hc.checked = false;
+    return;
+  }
   listMode = m;
   try { localStorage.setItem('gaokao3500.hardFilter', m === 'hard' ? '1' : '0'); } catch (e) {}
   const cb = document.getElementById('hardToggle');
@@ -501,7 +541,7 @@ function boot(d) {
     SR = d.sr || {};
     tricks = d.tricks || {};
     // 重难词本开关：恢复持久化状态
-    try { if (localStorage.getItem('gaokao3500.hardFilter') === '1') listMode = 'hard'; } catch (e) {}
+    try { if (localStorage.getItem('gaokao3500.hardFilter') === '1' && window.Sync && typeof Sync.isMember === 'function' && Sync.isMember()) listMode = 'hard'; } catch (e) {}
     var ht = document.getElementById('hardToggle');
     if (ht) {
       if (listMode === 'hard') ht.checked = true;

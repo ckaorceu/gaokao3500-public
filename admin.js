@@ -280,11 +280,12 @@
           '<td>' + escapeHtml(u.username || '') + '</td>' +
           '<td>' + fmtDate(u.created_at) + '</td>' +
           '<td>' + (u.last_sign_in_at ? fmtDate(u.last_sign_in_at) : '—') + '</td>' +
-          '<td>' + (u.is_admin ? '<span class="badge ok">管理员</span>' : '<span class="badge">普通</span>') + '</td>' +
+          '<td>' + (u.is_admin ? '<span class="badge ok">管理员</span> ' : '') + (u.is_member ? '<span class="badge member">会员</span>' : '<span class="badge">非会员</span>') + '</td>' +
           '<td class="row-actions">' +
             '<button class="auth-btn" data-act="detail" data-uid="' + uid + '">详情</button> ' +
             '<button class="auth-btn" data-act="reset" data-uid="' + uid + '" data-email="' + escapeHtml(u.email || '') + '">重置进度</button> ' +
             '<button class="auth-btn" data-act="' + (u.is_admin ? 'demote' : 'promote') + '" data-uid="' + uid + '">' + (u.is_admin ? '取消管理员' : '设为管理员') + '</button> ' +
+            '<button class="auth-btn" data-act="' + (u.is_member ? 'unmember' : 'member') + '" data-uid="' + uid + '">' + (u.is_member ? '取消会员' : '设为会员') + '</button> ' +
             '<button class="auth-btn danger" data-act="del" data-uid="' + uid + '" data-email="' + escapeHtml(u.email || '') + '">删除</button> ' +
           '</td></tr>';
       }).join('');
@@ -312,6 +313,18 @@
           if (confirm('取消该用户的管理员权限？')) {
             Sync.rpc('admin_set_admin', { p_uid: uid, p_flag: false })
               .then(function () { toast('已取消管理员', 'ok'); loadUsers(); })
+              .catch(function (e) { toast('失败：' + (e.message || e), 'err'); });
+          }
+        } else if (act === 'member') {
+          if (confirm('将该用户设为会员（解锁高级功能）？')) {
+            Sync.rpc('admin_set_member', { p_user_id: uid, p_is_member: true })
+              .then(function () { toast('已设为会员', 'ok'); loadUsers(); })
+              .catch(function (e) { toast('失败：' + (e.message || e), 'err'); });
+          }
+        } else if (act === 'unmember') {
+          if (confirm('取消该用户的会员资格？')) {
+            Sync.rpc('admin_set_member', { p_user_id: uid, p_is_member: false })
+              .then(function () { toast('已取消会员', 'ok'); loadUsers(); })
               .catch(function (e) { toast('失败：' + (e.message || e), 'err'); });
           }
         } else if (act === 'del') {
@@ -742,7 +755,9 @@
     if (next) next.disabled = !state.trickHasMore;
 
     if (!rows.length) {
-      var msg = state.trickExcludeEmpty ? '该状态下暂无非空巧记（已隐藏空内容）' : '该状态下暂无巧记';
+      var msg = state.trickExcludeEmpty
+        ? '当前筛选下暂无可显示的非空巧记。可取消勾选「隐藏空巧记」查看空内容提交，或切换上方状态（如「已通过」）。'
+        : '该状态下暂无巧记。';
       $('#trickList').innerHTML = '<div class="empty">' + msg + '</div>';
       updateTrickSelUI(); return;
     }
@@ -965,6 +980,7 @@
         if (c.model) $('#aiModel').value = c.model;
         if (c.base_url) $('#aiBaseUrl').value = c.base_url;
         $('#aiDailyLimit').value = (c.user_daily_limit != null) ? c.user_daily_limit : 30;
+        $('#aiMemberDailyLimit').value = (c.member_daily_limit != null) ? c.member_daily_limit : 100;
         $('#aiRateLimit').value = (c.rate_per_minute != null) ? c.rate_per_minute : 5;
         $('#aiMaxTokens').value = (c.max_tokens != null) ? c.max_tokens : 600;
         $('#aiGlobalLimit').value = (c.global_daily_limit != null) ? c.global_daily_limit : 0;
@@ -994,6 +1010,8 @@
     const base_url = $('#aiBaseUrl').value.trim();
     let daily = parseInt($('#aiDailyLimit').value, 10);
     if (isNaN(daily) || daily < 0) daily = 30;
+    let mdaily = parseInt($('#aiMemberDailyLimit').value, 10);
+    if (isNaN(mdaily) || mdaily < 0) mdaily = 100;
     let rpm = parseInt($('#aiRateLimit').value, 10);
     if (isNaN(rpm) || rpm < 1) rpm = 5;
     let mt = parseInt($('#aiMaxTokens').value, 10);
@@ -1010,6 +1028,7 @@
       p_model: model,
       p_base_url: base_url || null,
       p_user_daily_limit: daily,
+      p_member_daily_limit: mdaily,
       p_admin_unlimited: adminUnlimited,
       p_rate_per_minute: rpm,
       p_max_tokens: mt,
@@ -1213,11 +1232,13 @@
     const ps = $('#trickPageSize');
     if (ps && !ps._bound) {
       ps._bound = true;
+      state.trickLimit = parseInt(ps.value, 10) || 50;
       ps.onchange = function () { state.trickLimit = parseInt(ps.value, 10) || 50; resetTrickPage(); loadTricksMod(); };
     }
     const he = $('#trickHideEmpty');
     if (he && !he._bound) {
       he._bound = true;
+      state.trickExcludeEmpty = he.checked; // 与默认勾选状态保持一致，避免「勾选了却没过滤」导致空内容刷屏
       he.onchange = function () { state.trickExcludeEmpty = he.checked; resetTrickPage(); loadTricksMod(); };
     }
     const selAll = $('#trickSelAll');

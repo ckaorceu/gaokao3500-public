@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>站长后台 · 高考3500词</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="style.css?v=37">
+<link rel="stylesheet" href="style.css?v=41">
 </head>
 <body>
 <header class="topbar">
@@ -246,6 +246,10 @@
             <input id="aiDailyLimit" type="number" min="0" max="9999" step="1" placeholder="30">
             <small class="muted">0 = 不限制；管理员默认不受此限</small>
           </label>
+          <label class="ai-fld">会员每日 AI 次数上限
+            <input id="aiMemberDailyLimit" type="number" min="0" max="9999" step="1" placeholder="100">
+            <small class="muted">会员专属更高额度；0 = 不限；普通用户走上方上限</small>
+          </label>
           <label class="ai-fld">每分钟最多调用次数（频率限制）
             <input id="aiRateLimit" type="number" min="1" max="9999" step="1" placeholder="5">
             <small class="muted">防脚本瞬时刷爆；对所有人生效（含管理员）</small>
@@ -314,7 +318,7 @@
 <script defer src="config.js?v=5" charset="utf-8"></script>
 <script defer src="common.js?v=2" charset="utf-8"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script defer src="sync.js?v=27" charset="utf-8"></script>
-<script defer src="admin.js?v=17" charset="utf-8"></script>
+<script defer src="sync.js?v=29" charset="utf-8"></script>
+<script defer src="admin.js?v=20" charset="utf-8"></script>
 </body>
 </html>

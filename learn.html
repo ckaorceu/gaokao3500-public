@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://bkuvirojzuetweondgrx.supabase.co">
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="dns-prefetch" href="https://dict.youdao.com">
-<link rel="stylesheet" href="style.css?v=35">
+<link rel="stylesheet" href="style.css?v=41">
 <!-- 首屏防闪现：必须同步执行（勿加 defer/async），在渲染前用缓存隐藏后台已关闭的模块 -->
 <script src="flags-boot.js?v=1" charset="utf-8"></script>
 </head>
@@ -41,8 +41,8 @@
   <section class="trick-panel" id="trickPanel">
     <div class="trick-head">
       <span>💡 巧记方法</span>
-      <button class="link-btn" id="trickHideToggle" title="开启后，每道题先隐藏巧记，选/答完答案后再显示">👁 答题后显示</button>
-      <button class="link-btn" id="trickAutoBtn" title="开启后，遇到没有巧记的词会自动用 AI 生成（需登录，受每日配额限制）">✨ 自动生成</button>
+      <label class="trick-switch" title="开启后，每道题先隐藏巧记，选/答完答案后再显示"><input type="checkbox" id="trickHideToggle"><span class="ts-track"><span class="ts-knob"></span></span><span class="ts-label">👁 答题后显示</span></label>
+      <label class="trick-switch" title="开启后，遇到没有巧记的词会自动用 AI 生成（需登录，受每日配额限制）"><input type="checkbox" id="trickAutoBtn"><span class="ts-track"><span class="ts-knob"></span></span><span class="ts-label">✨ 自动生成</span></label>
       <button class="link-btn" id="curveBtn">📈 曲线</button>
       <button class="link-btn" id="trickEditBtn">编辑</button>
       <button class="link-btn" id="trickAiBtn">✨ AI 生成</button>
@@ -82,8 +82,8 @@
 <script defer src="config.js?v=5" charset="utf-8"></script>
 <script defer src="common.js?v=2" charset="utf-8"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script defer src="sync.js?v=27" charset="utf-8"></script>
+<script defer src="sync.js?v=29" charset="utf-8"></script>
 <script defer src="srs-core.js" charset="utf-8"></script>
-<script defer src="learn.js?v=44" charset="utf-8"></script>
+<script defer src="learn.js?v=51" charset="utf-8"></script>
 </body>
 </html>

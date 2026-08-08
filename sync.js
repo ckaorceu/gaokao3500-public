@@ -269,7 +269,7 @@
       renderAuth();
       // onAuthStateChange 不会在初始订阅时触发，故恢复会话后主动通知一次，
       // 让 app.js / learn.js 拉取云端数据（解决回头登录用户只看到本地旧数据的问题）
-      if (user) { fetchUsername(); fetchAdmin(); notify(); }
+      if (user) { fetchUsername(); fetchAdmin(); fetchMember(); notify(); }
     }).catch(function () { renderAuth(); });
 
     // 登录态变化：更新 UI 并通知订阅者（app.js / learn.js 会重新拉取并渲染）
@@ -277,7 +277,7 @@
       user = session ? session.user : null;
       accessToken = session ? session.access_token : '';
       renderAuth();
-      if (user) { fetchUsername(); fetchAdmin(); }
+      if (user) { fetchUsername(); fetchAdmin(); fetchMember(); }
       notify();
     });
     renderAuth();
@@ -285,7 +285,7 @@
 
   // ---------- 公开 API ----------
   function onAuth(cb) { if (typeof cb === 'function') authCbs.push(cb); }
-  function currentUser() { return user ? { id: user.id, email: user.email, username: user.username || null, isAdmin: !!user.isAdmin } : null; }
+  function currentUser() { return user ? { id: user.id, email: user.email, username: user.username || null, isAdmin: !!user.isAdmin, isMember: !!user.isMember } : null; }
 
   // 当前用户是否管理员（依赖 supabase_admin.sql 的 am_i_admin RPC）
   function amIAdmin() {
@@ -300,6 +300,13 @@
     if (!sb || !user) return;
     sb.rpc('am_i_admin').then(function (r) {
       if (r && !r.error) { user.isAdmin = !!r.data; renderAuth(); }
+    }).catch(function () {});
+  }
+  // 拉取会员标记（user_profiles.is_member，受 RLS 仅本人可读，普通用户无法自改）
+  function fetchMember() {
+    if (!sb || !user) return;
+    sb.from('user_profiles').select('is_member').eq('user_id', user.id).single().then(function (r) {
+      if (r && !r.error && r.data) { user.isMember = !!r.data.is_member; renderAuth(); }
     }).catch(function () {});
   }
 
@@ -340,6 +347,13 @@
   // 注册时检查用户名是否可用（依赖 username_taken RPC；未就绪时放行，由唯一索引兜底）
   function usernameAvailable(uname) {
     return sb.rpc('username_taken', { p_username: uname }).then(function (r) {
+      if (r.error) return true;
+      return !r.data;
+    });
+  }
+  // 注册时检查邮箱是否已被占用（依赖 email_taken RPC，大小写不敏感；未就绪时放行，由 GoTrue+唯一索引兜底）
+  function emailAvailable(email) {
+    return sb.rpc('email_taken', { p_email: email }).then(function (r) {
       if (r.error) return true;
       return !r.data;
     });
@@ -648,6 +662,7 @@
       var name = user.username || user.email || '已登录';
       var html = '<span class="auth-user">👤 ' + escapeHtml(name) + '</span>';
       if (user.isAdmin) html += '<a class="auth-btn" href="admin.html">后台</a>';
+      if (user.isMember) html += '<span class="badge member" title="会员专属功能已解锁">👑 会员</span>';
       html +=
         '<button class="auth-btn" id="authChangePw">改密码</button>' +
         '<button class="auth-btn" id="authChangeEmail">改邮箱</button>' +
@@ -783,6 +798,10 @@
     msg.className = 'auth-msg'; msg.textContent = '检查用户名…';
     usernameAvailable(uname).then(function (ok) {
       if (!ok) { msg.className = 'auth-msg err'; msg.textContent = '用户名已被占用'; return; }
+      msg.textContent = '检查邮箱…';
+      return emailAvailable(email);
+    }).then(function (emailOk) {
+      if (emailOk === false) { msg.className = 'auth-msg err'; msg.textContent = '该邮箱已注册，请直接登录'; return; }
       if (shouldShowCaptcha() && !cfToken('signup')) { msg.className = 'auth-msg err'; msg.textContent = '人机验证已失效，请重试'; return; }
       msg.textContent = '注册中…';
       pendingReg = { email: email, pw: pw, uname: uname };
@@ -1151,8 +1170,8 @@
     signOut: signOut, currentUser: currentUser, loadAll: loadAll,
     saveSR: saveSR, saveTricks: saveTricks, saveSRNow: saveSRNow, saveTricksNow: saveTricksNow, flush: flush,
     resetAll: resetAll,
-    changePassword: changePassword, usernameAvailable: usernameAvailable,
-    amIAdmin: amIAdmin, loadWordOverrides: loadWordOverrides, listWordOverrides: listWordOverrides, applyWordOverrides: applyWordOverrides,
+    changePassword: changePassword, usernameAvailable: usernameAvailable, emailAvailable: emailAvailable,
+    amIAdmin: amIAdmin, isMember: function () { return !!(user && user.isMember); }, loadWordOverrides: loadWordOverrides, listWordOverrides: listWordOverrides, applyWordOverrides: applyWordOverrides,
     loadApprovedTricks: loadApprovedTricks,
     rpc: rpc, getWordOverride: getWordOverride, saveWordOverride: saveWordOverride, deleteWordOverride: deleteWordOverride,
     onStudy: onStudy, streak: computeStreak, jwt: function () { return accessToken; },

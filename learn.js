@@ -148,6 +148,7 @@ function curveStats(h) {
 }
 function showCurve() {
   if (window.Sync && typeof Sync.flagOn === 'function' && Sync.flagOn('learning.curve_enabled') === false) return;
+  if (window.Sync && typeof Sync.isMember === 'function' && !Sync.isMember()) { alert('👑 「记忆曲线」为会员专属功能，请联系管理员开通会员后使用。'); return; }
   const { w } = queue[idx];
   const h = wordHistory(w.name);
   document.getElementById('curveWord').textContent = w.name;
@@ -202,6 +203,7 @@ function wrongListFilter(w) {
 }
 function showCurveFor(name) {
   if (window.Sync && typeof Sync.flagOn === 'function' && Sync.flagOn('learning.curve_enabled') === false) return;
+  if (window.Sync && typeof Sync.isMember === 'function' && !Sync.isMember()) { alert('👑 「记忆曲线」为会员专属功能，请联系管理员开通会员后使用。'); return; }
   const h = wordHistory(name);
   document.getElementById('curveWord').textContent = name;
   document.getElementById('curveBody').innerHTML = buildCurveSvg(h) + curveStats(h);
@@ -333,7 +335,7 @@ function getTrickHide() {
 function setTrickHide(v) {
   try { localStorage.setItem(TRICK_HIDE_KEY, v ? '1' : '0'); } catch (e) {}
   const btn = document.getElementById('trickHideToggle');
-  if (btn) btn.classList.toggle('active', v);
+  if (btn) btn.checked = v;
   applyTrickHiddenState();
 }
 function applyTrickHiddenState() {
@@ -357,7 +359,7 @@ function getTrickAuto() {
 function setTrickAuto(v) {
   try { localStorage.setItem(TRICK_AUTO_KEY, v ? '1' : '0'); } catch (e) {}
   const btn = document.getElementById('trickAutoBtn');
-  if (btn) btn.classList.toggle('active', v);
+  if (btn) btn.checked = v;
   if (v && queue && queue[idx]) maybeAutoGenerateTrick(); // 开启时立即为当前词尝试
 }
 function maybeAutoGenerateTrick() {
@@ -787,6 +789,11 @@ document.addEventListener('keydown', e => {
   if (e.key === 'r' || e.key === 'R') { toggleRepeat(); return; }
   if (e.key === 'ArrowUp') { e.preventDefault(); prevCard(); return; }
   if (e.key === 'ArrowDown') { e.preventDefault(); nextCard(); return; }
+  // 评分快捷键：评分条可见时，纯数字 1/2/3/4 = 不会/模糊/一般/熟记（rate 1~4）。
+  // 与 quiz 选答案的 1/2/3/4 混用：quiz 答题中评分条隐藏 → 1/2/3/4 选答案；评分条显示（含 quiz 答完、其它模式直接进入评分）→ 1/2/3/4 评分。
+  const rw = $('#rateWrap');
+  const rateVisible = rw && rw.style.display !== 'none';
+  if (rateVisible && ['1','2','3','4'].includes(e.key)) { rate(parseInt(e.key, 10)); return; }
   if (mode === 'meaning') {
     if (e.key === ' ') { e.preventDefault(); revealMeaning(); }
     else if (e.key === 'ArrowRight') { if ($('#rateWrap') && $('#rateWrap').style.display !== 'none') rate(4); }
@@ -845,12 +852,12 @@ function leBoot(d) {
     if ((b = document.getElementById('curveBtn'))) b.onclick = showCurve;
     if ((b = document.getElementById('trickEditBtn'))) b.onclick = openTrick;
     if ((b = document.getElementById('trickHideToggle'))) {
-      b.classList.toggle('active', getTrickHide());
-      b.onclick = function () { setTrickHide(!getTrickHide()); };
+      b.checked = getTrickHide();
+      b.onchange = function (e) { setTrickHide(e.target.checked); };
     }
     if ((b = document.getElementById('trickAutoBtn'))) {
-      b.classList.toggle('active', getTrickAuto());
-      b.onclick = function () { setTrickAuto(!getTrickAuto()); };
+      b.checked = getTrickAuto();
+      b.onchange = function (e) { setTrickAuto(e.target.checked); };
     }
     if ((b = document.getElementById('trickCancelBtn'))) b.onclick = closeTrick;
     if ((b = document.getElementById('trickSaveBtn'))) b.onclick = saveTrick;
