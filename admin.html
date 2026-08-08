@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>站长后台 · 高考3500词</title>
+<meta name="robots" content="noindex">
 <link rel="stylesheet" href="style.css?v=31">
 </head>
 <body>
@@ -242,12 +243,41 @@
             <input id="aiDailyLimit" type="number" min="0" max="9999" step="1" placeholder="30">
             <small class="muted">0 = 不限制；管理员默认不受此限</small>
           </label>
+          <label class="ai-fld">每分钟最多调用次数（频率限制）
+            <input id="aiRateLimit" type="number" min="1" max="9999" step="1" placeholder="5">
+            <small class="muted">防脚本瞬时刷爆；对所有人生效（含管理员）</small>
+          </label>
+          <label class="ai-fld">单次生成最大 token（成本护栏）
+            <input id="aiMaxTokens" type="number" min="100" max="8000" step="50" placeholder="600">
+            <small class="muted">限制单次 LLM 输出长度，防输出过长烧钱</small>
+          </label>
+          <label class="ai-fld">全局每日总调用预算（0 = 不限）
+            <input id="aiGlobalLimit" type="number" min="0" max="999999" step="1" placeholder="0">
+            <small class="muted">全站所有用户合计上限，超预算当日暂停 AI（防全局爆费）</small>
+          </label>
           <label class="ai-fld chk"><input type="checkbox" id="aiAdminUnlimited" checked> 管理员不受次数限制</label>
           <div class="auth-msg" id="aiMsg"></div>
           <div class="dlg-actions">
             <button class="primary" id="aiSave">保存配置</button>
             <button class="ghost" id="aiTest">测试连接</button>
           </div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>🚫 AI 封禁管理</h3>
+        <p class="muted">封禁某用户后，其 AI 巧记 / 报告 / 计划 将全部禁用（返 403），不受配额影响。输入用户 ID、邮箱或用户名进行封禁 / 解封。</p>
+        <div class="filters" style="margin-bottom:10px">
+          <input id="banTarget" placeholder="用户 ID / 邮箱 / 用户名" style="flex:1;min-width:160px">
+          <input id="banReason" placeholder="封禁原因（可选）" style="flex:1;min-width:160px">
+          <button class="auth-btn danger" id="banBtn">封禁</button>
+          <button class="auth-btn" id="unbanBtn">解封</button>
+        </div>
+        <div class="auth-msg" id="banMsg"></div>
+        <div class="table-wrap" style="margin-top:10px">
+          <table class="admin-table">
+            <thead><tr><th>邮箱</th><th>用户名</th><th>原因</th><th>封禁时间</th><th>操作</th></tr></thead>
+            <tbody id="banListBody"><tr><td colspan="5" class="empty">加载中…</td></tr></tbody>
+          </table>
         </div>
       </div>
       <div class="panel">
@@ -271,7 +301,7 @@
 <script defer src="config.js?v=5" charset="utf-8"></script>
 <script defer src="common.js?v=1" charset="utf-8"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script defer src="sync.js?v=25" charset="utf-8"></script>
-<script defer src="admin.js?v=12" charset="utf-8"></script>
+<script defer src="sync.js?v=26" charset="utf-8"></script>
+<script defer src="admin.js?v=13" charset="utf-8"></script>
 </body>
 </html>

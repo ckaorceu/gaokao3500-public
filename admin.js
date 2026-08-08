@@ -144,7 +144,7 @@
     else if (tab === 'export') initExport();
     else if (tab === 'tricks') loadTricksMod();
     else if (tab === 'ops') loadOps();
-    else if (tab === 'ai') { loadAICfg(); loadAIUsage(); }
+    else if (tab === 'ai') { loadAICfg(); loadAIUsage(); loadBanList(); }
   }
 
   // ---------- 数据看板 ----------
@@ -863,6 +863,9 @@
         if (c.model) $('#aiModel').value = c.model;
         if (c.base_url) $('#aiBaseUrl').value = c.base_url;
         $('#aiDailyLimit').value = (c.user_daily_limit != null) ? c.user_daily_limit : 30;
+        $('#aiRateLimit').value = (c.rate_per_minute != null) ? c.rate_per_minute : 5;
+        $('#aiMaxTokens').value = (c.max_tokens != null) ? c.max_tokens : 600;
+        $('#aiGlobalLimit').value = (c.global_daily_limit != null) ? c.global_daily_limit : 0;
         $('#aiAdminUnlimited').checked = (c.admin_unlimited !== false);
         $('#aiKey').placeholder = c.api_key_masked
           ? ('现有密钥：' + c.api_key_masked + '（留空保留）')
@@ -889,6 +892,12 @@
     const base_url = $('#aiBaseUrl').value.trim();
     let daily = parseInt($('#aiDailyLimit').value, 10);
     if (isNaN(daily) || daily < 0) daily = 30;
+    let rpm = parseInt($('#aiRateLimit').value, 10);
+    if (isNaN(rpm) || rpm < 1) rpm = 5;
+    let mt = parseInt($('#aiMaxTokens').value, 10);
+    if (isNaN(mt) || mt < 100) mt = 600;
+    let gl = parseInt($('#aiGlobalLimit').value, 10);
+    if (isNaN(gl) || gl < 0) gl = 0;
     const adminUnlimited = !!$('#aiAdminUnlimited').checked;
     if (!provider || !model) { toast('请填写服务商与模型名', 'err'); return; }
     const msg = $('#aiMsg');
@@ -899,7 +908,10 @@
       p_model: model,
       p_base_url: base_url || null,
       p_user_daily_limit: daily,
-      p_admin_unlimited: adminUnlimited
+      p_admin_unlimited: adminUnlimited,
+      p_rate_per_minute: rpm,
+      p_max_tokens: mt,
+      p_global_daily_limit: gl
     }).then(function () {
       msg.className = 'auth-msg ok';
       msg.textContent = '已保存 AI 配置';
@@ -944,6 +956,73 @@
     }).catch(function (e) {
       msg.className = 'auth-msg err';
       msg.textContent = '测试请求异常：' + (e && e.message ? e.message : e);
+    });
+  }
+
+  // ---------- AI 封禁管理 ----------
+  function resolveUser(input) {
+    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRe.test(input)) return Promise.resolve(input);
+    return Sync.rpc('admin_list_users', { p_limit: 10, p_offset: 0, p_search: input }).then(function (rows) {
+      rows = rows || [];
+      const exact = rows.filter(function (r) {
+        return (r.email || '').toLowerCase() === input.toLowerCase() || (r.username || '').toLowerCase() === input.toLowerCase();
+      });
+      if (exact.length === 1) return exact[0].id;
+      if (rows.length === 1) return rows[0].id;
+      if (rows.length === 0) return null;
+      return 'MULTI';
+    });
+  }
+
+  function banUser() {
+    const input = ($('#banTarget').value || '').trim();
+    const reason = ($('#banReason').value || '').trim();
+    if (!input) { toast('请输入用户 ID / 邮箱 / 用户名', 'err'); return; }
+    const msg = $('#banMsg');
+    msg.className = 'auth-msg'; msg.textContent = '处理中…';
+    resolveUser(input).then(function (uid) {
+      if (!uid) { msg.className = 'auth-msg err'; msg.textContent = '未找到该用户'; return; }
+      if (uid === 'MULTI') { msg.className = 'auth-msg err'; msg.textContent = '匹配多个用户，请输入更精确或用户 ID'; return; }
+      Sync.rpc('admin_ban_user', { p_user: uid, p_ban: true, p_reason: reason || null }).then(function () {
+        msg.className = 'auth-msg ok'; msg.textContent = '已封禁该用户的 AI 功能';
+        toast('已封禁', 'ok');
+        $('#banTarget').value = ''; $('#banReason').value = '';
+        loadBanList();
+      }).catch(function (e) { msg.className = 'auth-msg err'; msg.textContent = '封禁失败：' + (e.message || e); });
+    }).catch(function (e) { msg.className = 'auth-msg err'; msg.textContent = '查询失败：' + (e.message || e); });
+  }
+
+  function unbanUser(uid) {
+    const msg = $('#banMsg');
+    Sync.rpc('admin_ban_user', { p_user: uid, p_ban: false }).then(function () {
+      msg.className = 'auth-msg ok'; msg.textContent = '已解封';
+      toast('已解封', 'ok');
+      loadBanList();
+    }).catch(function (e) { msg.className = 'auth-msg err'; msg.textContent = '解封失败：' + (e.message || e); });
+  }
+
+  function loadBanList() {
+    const body = $('#banListBody');
+    if (!body) return;
+    body.innerHTML = '<tr><td colspan="5" class="empty">加载中…</td></tr>';
+    Sync.rpc('admin_list_banned', { p_limit: 50 }).then(function (rows) {
+      rows = rows || [];
+      if (!rows.length) { body.innerHTML = '<tr><td colspan="5" class="empty">暂无被封禁用户</td></tr>'; return; }
+      body.innerHTML = rows.map(function (r) {
+        return '<tr>' +
+          '<td>' + escapeHtml(r.email || '(无邮箱)') + '</td>' +
+          '<td>' + escapeHtml(r.username || '') + '</td>' +
+          '<td>' + escapeHtml(r.reason || '—') + '</td>' +
+          '<td>' + fmtDateTime(r.banned_at) + '</td>' +
+          '<td class="row-actions"><button class="auth-btn" data-unban="' + escapeHtml(String(r.user_id)) + '">解封</button></td>' +
+          '</tr>';
+      }).join('');
+      $$('#banListBody button[data-unban]').forEach(function (b) {
+        b.onclick = function () { unbanUser(b.dataset.unban); };
+      });
+    }).catch(function (e) {
+      body.innerHTML = '<tr><td colspan="5" class="empty">加载失败：' + escapeHtml(e.message || e) + '</td></tr>';
     });
   }
 
@@ -1066,6 +1145,17 @@
     if (aiS && !aiS._bound) { aiS._bound = true; aiS.onclick = saveAICfg; }
     if (aiT && !aiT._bound) { aiT._bound = true; aiT.onclick = testAI; }
     if (aiU && !aiU._bound) { aiU._bound = true; aiU.onclick = loadAIUsage; }
+    const bB = $('#banBtn'), uB = $('#unbanBtn');
+    if (bB && !bB._bound) { bB._bound = true; bB.onclick = banUser; }
+    if (uB && !uB._bound) { uB._bound = true; uB.onclick = function () {
+      const t = ($('#banTarget').value || '').trim();
+      if (!t) { toast('请输入要解封的用户 ID / 邮箱 / 用户名', 'err'); return; }
+      resolveUser(t).then(function (uid) {
+        if (!uid) { toast('未找到该用户', 'err'); return; }
+        if (uid === 'MULTI') { toast('匹配多个用户，请输入更精确或用户 ID', 'err'); return; }
+        unbanUser(uid);
+      }).catch(function (e) { toast('查询失败：' + (e.message || e), 'err'); });
+    }; }
     const uf = $('#userFilter');
     if (uf && !uf._bound) { uf._bound = true; uf.onchange = function () { state.filter = uf.value; state.userOffset = 0; loadUsers(); }; }
     const us = $('#userSearch');

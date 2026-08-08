@@ -1461,3 +1461,13 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   .wrong-list .wl-fix, .wrong-list .wl-curve { flex: 1; }
 }
 
+/* SEO 简介区块（首页可抓取内容） */
+.seo-about { margin: 28px 0 8px; padding: 20px 22px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; }
+.seo-about h2 { margin: 0 0 12px; font-size: 18px; color: var(--text); }
+.seo-about p { margin: 0 0 10px; font-size: 14px; line-height: 1.8; color: var(--muted); }
+.seo-about p strong { color: var(--text); }
+.seo-about ul { margin: 0 0 10px; padding-left: 20px; }
+.seo-about li { font-size: 14px; line-height: 1.8; color: var(--muted); margin-bottom: 6px; }
+.seo-about li strong { color: var(--text); }
+@media (max-width: 640px) { .seo-about { padding: 16px; } .seo-about h2 { font-size: 16px; } }
+

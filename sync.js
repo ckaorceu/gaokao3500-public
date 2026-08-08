@@ -242,7 +242,7 @@
       return;
     }
     try {
-      sb = supabase.createClient(c.url, c.key);
+      if (!sb) sb = supabase.createClient(c.url, c.key);
     } catch (e) {
       // 预期降级：创建客户端失败（多为 key 格式错误）回退本地模式；
       // 详细错误仅在 DEBUG 下打印，避免对普通用户刷屏
