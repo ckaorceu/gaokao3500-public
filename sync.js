@@ -326,7 +326,7 @@
     });
   }
   function signIn(identifier, pw, captchaToken) {
-    return resolveEmail(identifier).then(function (email) {
+    return resolveEmail(identifier, pw).then(function (email) {
       var opts = {};
       if (captchaToken) opts.captchaToken = captchaToken;
       return sb.auth.signInWithPassword({ email: email, password: pw, options: opts });
@@ -334,27 +334,33 @@
       if (r.error) throw r.error; return r.data;
     });
   }
-  // 用户名 -> 邮箱 解析（依赖 supabase_profiles.sql 的 email_for_username RPC）
-  function resolveEmail(identifier) {
+  // 用户名 -> 邮箱 解析（login_email_for_username RPC：必须同时给出正确密码才返回邮箱，
+  // 防止匿名枚举用户名/邮箱；服务端按 IP 每分钟 10 次限流）
+  function resolveEmail(identifier, pw) {
     identifier = (identifier || '').trim();
     if (identifier.indexOf('@') !== -1) return Promise.resolve(identifier);
-    return sb.rpc('email_for_username', { p_username: identifier }).then(function (r) {
-      if (r.error) throw new Error('用户名登录暂未启用，请先用邮箱登录');
-      if (!r.data) throw new Error('用户名不存在');
+    if (!identifier) throw new Error('请输入邮箱或用户名');
+    return sb.rpc('login_email_for_username', { p_username: identifier, p_password: pw || '' }).then(function (r) {
+      if (r.error) {
+        var m = (r.error.message || '') + '';
+        if (m.indexOf('RATE_LIMIT') !== -1) throw new Error('尝试过于频繁，请稍后再试');
+        throw new Error('用户名登录暂不可用，请改用邮箱登录');
+      }
+      if (!r.data) throw new Error('用户名或密码错误');
       return r.data;
     });
   }
-  // 注册时检查用户名是否可用（依赖 username_taken RPC；未就绪时放行，由唯一索引兜底）
+  // 注册时检查用户名是否可用（依赖 username_taken RPC；校验失败一律拦截，不再静默放行）
   function usernameAvailable(uname) {
     return sb.rpc('username_taken', { p_username: uname }).then(function (r) {
-      if (r.error) return true;
+      if (r.error) throw new Error('用户名校验服务暂不可用，请稍后重试');
       return !r.data;
     });
   }
-  // 注册时检查邮箱是否已被占用（依赖 email_taken RPC，大小写不敏感；未就绪时放行，由 GoTrue+唯一索引兜底）
+  // 注册时检查邮箱是否已被占用（依赖 email_taken RPC，大小写不敏感；校验失败一律拦截）
   function emailAvailable(email) {
     return sb.rpc('email_taken', { p_email: email }).then(function (r) {
-      if (r.error) return true;
+      if (r.error) throw new Error('邮箱校验服务暂不可用，请稍后重试');
       return !r.data;
     });
   }
@@ -801,11 +807,11 @@
     }
     msg.className = 'auth-msg'; msg.textContent = '检查用户名…';
     usernameAvailable(uname).then(function (ok) {
-      if (!ok) { msg.className = 'auth-msg err'; msg.textContent = '用户名已被占用'; return; }
+      if (!ok) throw new Error('用户名已被占用');
       msg.textContent = '检查邮箱…';
       return emailAvailable(email);
     }).then(function (emailOk) {
-      if (emailOk === false) { msg.className = 'auth-msg err'; msg.textContent = '该邮箱已注册，请直接登录'; return; }
+      if (emailOk !== true) throw new Error('该邮箱已注册，请直接登录');
       if (shouldShowCaptcha() && !cfToken('signup')) { msg.className = 'auth-msg err'; msg.textContent = '人机验证已失效，请重试'; return; }
       msg.textContent = '注册中…';
       pendingReg = { email: email, pw: pw, uname: uname };
