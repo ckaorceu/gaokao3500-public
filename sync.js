@@ -104,7 +104,9 @@
     return !!(k && k.indexOf('PLACEHOLDER') !== 0);
   }
   var _cfWidgets = {};   // action -> widgetId
-  function cfRender(action) {
+  var _cfTokens = {};    // action -> 最近一次通过的 token（Turnstile token 单次有效，缓存以便重发时判定新鲜度）
+  function cfRender(action, onReady) {
+    _cfTokens[action] = null;
     if (!shouldShowCaptcha()) {   // 全局开关关 / sitekey 占位 -> 不渲染并隐藏控件
       var _w = document.querySelector('#authOverlay .cf-wrap');
       if (_w) _w.style.display = 'none';
@@ -121,7 +123,8 @@
           sitekey: window.CF_TURNSTILE_SITEKEY,
           action: action,
           'refresh-expired': 'manual',
-          'expired-callback': function () { _cfWidgets[action] = null; }
+          'expired-callback': function () { _cfWidgets[action] = null; _cfTokens[action] = null; },
+          'callback': function (token) { _cfTokens[action] = token || null; if (onReady) onReady(token); }
         });
       } catch (e) { _cfWidgets[action] = null; }
     }
@@ -141,12 +144,42 @@
     return _cfWidgets[action];
   }
   function cfToken(action) {
+    if (_cfTokens[action]) return _cfTokens[action];   // 优先用回调缓存（已通过验证的 token）
     if (window.turnstile && _cfWidgets[action] != null) {
       try { return window.turnstile.getResponse(_cfWidgets[action]) || ''; } catch (e) {}
     }
     return '';
   }
-  function cfReset(action) { try { if (window.turnstile && _cfWidgets[action] != null) window.turnstile.reset(_cfWidgets[action]); } catch (e) {} }
+  function cfReset(action) { _cfTokens[action] = null; try { if (window.turnstile && _cfWidgets[action] != null) window.turnstile.reset(_cfWidgets[action]); } catch (e) {} }
+
+  // ---------- 重新发送验证码冷却（1 分钟，防刷） ----------
+  // key 区分注册 / 找回密码两条流程；进入验证码页（已发过一次码）即起算，重发成功后再续 1 分钟。
+  var _resendUntil = {};     // key -> 时间戳(ms)，在此之前禁止重发
+  var RESEND_COOLDOWN = 60000;
+  function resendBlocked(key) {
+    var remain = Math.ceil(((_resendUntil[key] || 0) - Date.now()) / 1000);
+    return remain > 0 ? remain : 0;
+  }
+  function startResendCooldown(btn, key, baseText) {
+    if (!btn) return;
+    _resendUntil[key] = Date.now() + RESEND_COOLDOWN;
+    if (btn._resendIv) { clearInterval(btn._resendIv); btn._resendIv = null; }
+    function tick() {
+      var remain = Math.ceil((_resendUntil[key] - Date.now()) / 1000);
+      if (remain <= 0) {
+        clearInterval(btn._resendIv); btn._resendIv = null;
+        btn.disabled = false; btn.textContent = baseText;
+      } else {
+        btn.disabled = true; btn.textContent = remain + ' 秒后可重发';
+      }
+    }
+    tick();
+    btn._resendIv = setInterval(tick, 1000);
+  }
+  function clearResendCooldown(btn, baseText) {
+    if (btn && btn._resendIv) { clearInterval(btn._resendIv); btn._resendIv = null; }
+    if (btn) { btn.disabled = false; btn.textContent = baseText; }
+  }
 
   // ---------- 功能开关缓存（来自 feature_flags 表，由后台「🎛️ 运营」管理） ----------
   // 为避免「后台已关闭的模块在首屏闪现一下再消失」，开关结果会写入 localStorage：
@@ -864,17 +897,32 @@
     document.getElementById('authVerify').onclick = doVerify;
     document.getElementById('authCode').addEventListener('keydown', function (e) { if (e.key === 'Enter') doVerify(); });
     document.getElementById('authBackLogin').onclick = function (e) { e.preventDefault(); showLogin(); };
-    document.getElementById('authResend').onclick = function () {
-      if (!pendingReg) return;
-      if (shouldShowCaptcha() && !cfToken('signup')) { m.className = 'auth-msg err'; m.textContent = '请先完成人机验证'; return; }
+    var _resendBtn = document.getElementById('authResend');
+    function doResend() {
       signUp(pendingReg.email, pendingReg.pw, pendingReg.uname, cfToken('signup'))
         .then(function () {
           cfReset('signup'); cfRender('signup');
           m.className = 'auth-msg ok'; m.textContent = '已重新发送验证码';
+          startResendCooldown(_resendBtn, 'signup', '重新发送');
         }).catch(function (e) {
           m.className = 'auth-msg err'; m.textContent = (e && e.message) ? e.message : '发送失败';
+          clearResendCooldown(_resendBtn, '重新发送');
         });
+    }
+    _resendBtn.onclick = function () {
+      if (!pendingReg) return;
+      var remain = resendBlocked('signup');
+      if (remain > 0) { m.className = 'auth-msg'; m.textContent = remain + ' 秒后才可重新发送'; return; }
+      if (shouldShowCaptcha()) {
+        // Turnstile token 单次有效：首次 signUp 已消费该 token，重发必须重新过人机验证拿到新 token
+        m.className = 'auth-msg'; m.textContent = '请完成人机验证后自动重新发送…';
+        cfReset('signup');
+        cfRender('signup', function () { doResend(); });
+        return;
+      }
+      doResend();
     };
+    startResendCooldown(_resendBtn, 'signup', '重新发送');   // 进入页面已发过一次码，立即起算冷却
     var ce = document.getElementById('authCode'); if (ce) ce.focus();
   }
 
@@ -926,6 +974,10 @@
       '<h3>重置密码</h3>' +
       '<p class="auth-hint">验证码已发送至 <b>' + escapeHtml(email) + '</b>（6 位数字），请输入以验证身份。</p>' +
       '<input id="authRecCode" type="text" inputmode="numeric" maxlength="8" placeholder="输入 6 位验证码">' +
+      '<div class="cf-wrap">' +
+        '<div class="cf-label"><span class="cf-lock"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>安全验证<span class="cf-sub">· 请完成人机验证后继续</span></div>' +
+        '<div class="cf-box" id="cfBox"></div>' +
+      '</div>' +
       '<div class="auth-msg" id="authResetMsg"></div>' +
       '<div class="row">' +
         '<button class="auth-btn primary" id="authRecVerify">验证并设新密码</button>' +
@@ -934,15 +986,30 @@
       '<div class="auth-forgot"><a href="#" id="authRecBack">返回登录</a></div>'
     );
     var m = document.getElementById('authResetMsg');
+    cfRender('recovery');
+    if (!shouldShowCaptcha()) { var _rw = document.querySelector('#authOverlay .cf-wrap'); if (_rw) _rw.style.display = 'none'; }
     document.getElementById('authRecBack').onclick = function (e) { e.preventDefault(); showLogin(); };
-    document.getElementById('authRecResend').onclick = function () {
-      if (shouldShowCaptcha() && !cfToken('recovery')) { m.className = 'auth-msg err'; m.textContent = '请先完成人机验证'; return; }
+    var _recResendBtn = document.getElementById('authRecResend');
+    function doRecResend() {
       sb.auth.resetPasswordForEmail(email, cfToken('recovery') ? { captchaToken: cfToken('recovery') } : undefined).then(function (r) {
         if (r.error) throw r.error;
         cfReset('recovery');
         m.className = 'auth-msg ok'; m.textContent = '已重新发送';
-      }).catch(function (e) { m.className = 'auth-msg err'; m.textContent = (e && e.message) ? e.message : '发送失败'; });
+        startResendCooldown(_recResendBtn, 'recovery', '重新发送');
+      }).catch(function (e) { m.className = 'auth-msg err'; m.textContent = (e && e.message) ? e.message : '发送失败'; clearResendCooldown(_recResendBtn, '重新发送'); });
+    }
+    _recResendBtn.onclick = function () {
+      var remain = resendBlocked('recovery');
+      if (remain > 0) { m.className = 'auth-msg'; m.textContent = remain + ' 秒后才可重新发送'; return; }
+      if (shouldShowCaptcha()) {
+        m.className = 'auth-msg'; m.textContent = '请完成人机验证后自动重新发送…';
+        cfReset('recovery');
+        cfRender('recovery', function () { doRecResend(); });
+        return;
+      }
+      doRecResend();
     };
+    startResendCooldown(_recResendBtn, 'recovery', '重新发送');   // 进入页面已发过一次码，立即起算冷却
     document.getElementById('authRecVerify').onclick = function () {
       var code = (document.getElementById('authRecCode').value || '').trim();
       if (!code) { m.className = 'auth-msg err'; m.textContent = '请输入验证码'; return; }
