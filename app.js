@@ -580,6 +580,8 @@ function boot(d) {
     Sync.applyWordOverrides(ovr);
     SR = d.sr || {};
     tricks = d.tricks || {};
+    // 标记云端全量已合并：允许后续 saveSR 执行对比删除（首页虽少评分，防御性保持一致）
+    if (window.Sync && typeof Sync.markCloudMerged === 'function') Sync.markCloudMerged();
     // 重难词本开关：恢复持久化状态
     try { if (localStorage.getItem('gaokao3500.hardFilter') === '1' && window.Sync && typeof Sync.isMember === 'function' && Sync.isMember()) listMode = 'hard'; } catch (e) {}
     var ht = document.getElementById('hardToggle');
@@ -637,7 +639,7 @@ Sync.ensureFlags();
 try {
   var _lp = Sync.peekLocal();
   if (_lp && _lp.sr && Object.keys(_lp.sr).length) {
-    SR = _lp.sr; tricks = _lp.tricks; invalidateSrCache();
+    SR = _lp.sr; tricks = _lp.tricks || {}; invalidateSrCache();
     renderModePicker(); renderStats();
   }
 } catch (e) {}

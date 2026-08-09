@@ -31,6 +31,9 @@
   var saveTimerTricks = null;
   var pendingSR = null;       // 待落云的最后一个 SR 对象（pagehide 时兜底刷新）
   var pendingTricks = null;   // 待落云的最后一个 tricks 对象
+  // 本地优先阶段的"安全开关"：未与云端全量合并前为 false，_saveSR 只 upsert 不删除，
+  // 杜绝用不完整的本地缓存把云端多出的词误删（导致进度倒退/丢失）。learn.js/app.js 在云端合并成功后置 true。
+  var _cloudMerged = false;
 
   // ---------- 配置读取 ----------
   function config() {
@@ -537,6 +540,9 @@
 
     return upsertP.then(function (r) {
       if (r && r.error) throw r.error;
+      // 本地优先阶段（_cloudMerged=false）只 upsert、不执行对比删除：此时本地 SR 可能只是不完整的旧缓存，
+      // 若依其对比删除会把云端缺失的词全部删掉，造成进度倒退/丢失。云端全量合并成功后由消费方置 true。
+      if (!_cloudMerged) return;
       // 分页拉取云端全量 (mode,word) 用于对比删除；PostgREST 默认上限 1000，需翻页
       var PAGE = 1000, acc = [];
       function page(from) {
@@ -1295,7 +1301,9 @@
     // 后台「功能开关」读取接口（feature_flags 表，由后台「🎛️ 运营」管理）
     flagOn: flagOn, ensureFlags: ensureFlags, onFlags: onFlags,
     // 本地优先：返回 localStorage 缓存的 SR/tricks，供首屏/练习页在云端同步完成前秒填充渲染
-    peekLocal: function () { return { sr: localGet(SR_KEY), tricks: localGet(TRICK_KEY) }; }
+    peekLocal: function () { return { sr: localGet(SR_KEY), tricks: localGet(TRICK_KEY) }; },
+    // 标记云端全量已与本地合并完成：此后 saveSR 才可执行"对比删除"，避免不完整缓存误删云端数据
+    markCloudMerged: function () { _cloudMerged = true; }
   };
 
   if (document.readyState === 'loading') {

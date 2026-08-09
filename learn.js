@@ -9,6 +9,7 @@ const DAY = 86400000;
 // 初始为空，数据在 Sync.loadAll() 完成后填充（见文件末尾 init）
 let SR = {};
 let tricks = {};
+let srDirty = {};   // 本地优先阶段用户实际改过的 SR 词（key=mode\u0000word），云端合并时保留本地值，防"评不会"被覆盖回退
 function saveSR() { Sync.saveSR(SR); }
 
 const params = new URLSearchParams(location.search);
@@ -688,6 +689,7 @@ function rate(targetLv) {
     const iv = srsInterval(newLv);
     SR[mode][w.name] = { l: newLv, due: now + iv * DAY, iv: iv };
   }
+  srDirty[mode + '\u0000' + w.name] = true;   // 本地优先阶段用户改过的词，云端合并时保留本地（防"评不会"被覆盖回退）
   saveSR();
   // 记录记忆历史（用于每词记忆曲线）：记得(r=1) / 遗忘(r=0)
   if (!tricks[w.name]) tricks[w.name] = {};
@@ -912,6 +914,7 @@ function bindCardDelegation() {
   });
 }
 let leReadyDone = false;
+let leBooted = false;   // 防止 onAuth + 外层 loadAll 双触发导致 leBoot 重复执行（双拉云端 + 双 show）
 function leBind() {
   // CSP 兼容：内联 onclick 改为 JS 绑定（严格 CSP 下内联事件会被拦截），只绑定一次
   var b;
@@ -948,6 +951,25 @@ function mergeSR(base, inc) {
   }
   return out;
 }
+// 本地优先合并（新版）：云端为基准，但"本地优先阶段用户实际改过的词（srDirty，按 mode+word）"保留本地值，
+// 其余取本地/云端中 l 较高者作保险。解决旧 mergeSR 的缺陷：评"不会/模糊"（l 比云端低）会被云端旧高值覆盖，
+// 表现为"进度变回之前的进度"。
+function mergeKeepDirty(local, cloud) {
+  var out = JSON.parse(JSON.stringify(cloud || {}));
+  local = local || {};
+  for (var k in local) {
+    if (!local.hasOwnProperty(k)) continue;
+    out[k] = out[k] || {};
+    for (var n in local[k]) {
+      if (!local[k].hasOwnProperty(n)) continue;
+      var key = k + '\u0000' + n;
+      var b = local[k][n], o = out[k][n];
+      if (srDirty[key]) out[k][n] = b;                                  // 用户改过：用本地（含降级，绝不回退）
+      else if (!o || (b.l || 0) > (o.l || 0)) out[k][n] = b;           // 否则取较高者
+    }
+  }
+  return out;
+}
 // 用给定 SR/tricks 渲染练习页；fromCloud=true 时先合并本地优先期间可能产生的未保存修改
 function leReady(srObj, tricksObj, fromCloud) {
   if (!leReadyDone) {
@@ -955,7 +977,11 @@ function leReady(srObj, tricksObj, fromCloud) {
     leBind();
     Sync.onStudy(renderStreak);
   }
-  if (fromCloud) srObj = mergeSR(SR, srObj);
+  if (fromCloud) {
+    srObj = mergeKeepDirty(SR, srObj);   // 本地优先期间用户改过的词保留本地，避免"评不会"被云端覆盖回退
+    if (window.Sync && typeof Sync.markCloudMerged === 'function') Sync.markCloudMerged();  // 标记云端已合并，允许后续 saveSR 对比删除
+    srDirty = {};                        // 合并完成，清空脏标记
+  }
   SR = srObj || {};
   tricks = tricksObj || {};
   invalidateLvlCache();   // SR 整体赋值，bestLevel 缓存失效
@@ -972,6 +998,8 @@ function leReady(srObj, tricksObj, fromCloud) {
   applyLearnGates();
 }
 function leBoot(d) {
+  if (leBooted) return;   // 幂等：onAuth 与外层 loadAll 都会调用，已登录时只跑一次
+  leBooted = true;
   // 本地优先：若已有缓存，init 已先 leReady 显示第一个词；这里拉云端 overrides + 最新 SR 再刷新
   Sync.loadWordOverrides().then(function (ovr) {
     Sync.applyWordOverrides(ovr);
