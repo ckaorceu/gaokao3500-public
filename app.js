@@ -146,10 +146,10 @@ function renderModePicker() {
     let base = `learn.html?mode=${selectedMode}`;
     if (selectedOrder === 'shuffle') base += '&order=shuffle';
     if (selectedDrill !== 'all') base += '&drill=' + encodeURIComponent(selectedDrill);
-    if (selectedRepeat === 'on') {
-      base += '&repeat=on';
-      if (selectedRepeatMax > 0) base += '&rmax=' + selectedRepeatMax;
-    }
+    // 显式传递重复记忆状态：开/关都要传，否则学习页无 repeat 参数时会回退到后台默认开关
+    // （learning.repeat_default），导致首页明明设为「关」练习页仍显示「重复记忆开」。
+    base += '&repeat=' + (selectedRepeat === 'on' ? 'on' : 'off');
+    if (selectedRepeat === 'on' && selectedRepeatMax > 0) base += '&rmax=' + selectedRepeatMax;
     // 默认（全词表、无筛选、顺序）"开始练习"不指定 w：让学习页从 SRS 队列首个未掌握/到点词续练，
     // 避免每次都从字典序首个 a 词开始。仅在主动缩窄范围或选乱序时从范围顶部开始。
     const narrowed = listMode === 'hard' || activeLetter !== 'all' || selectedDrill !== 'all' || filterMode !== 'all' || selectedOrder === 'shuffle';
@@ -484,7 +484,8 @@ function renderUnitProgress() {
 function startUnit(from, to) {
   var base = 'learn.html?mode=' + selectedMode + '&from=' + from + '&to=' + (to + 1);
   if (selectedOrder === 'shuffle') base += '&order=shuffle';
-  if (selectedRepeat === 'on') { base += '&repeat=on'; if (selectedRepeatMax > 0) base += '&rmax=' + selectedRepeatMax; }
+  base += '&repeat=' + (selectedRepeat === 'on' ? 'on' : 'off');
+  if (selectedRepeat === 'on' && selectedRepeatMax > 0) base += '&rmax=' + selectedRepeatMax;
   location.href = base;
 }
 function renderQuote() {

@@ -436,17 +436,30 @@
   }
 
   function fetchSR() {
-    return sb.from('sr_progress').select('mode,word,l,due,iv,updated_at').eq('user_id', user.id)
-      .then(function (r) {
-        if (r.error) throw r.error;
-        var sr = {};
-        (r.data || []).forEach(function (row) {
-          sr[row.mode] = sr[row.mode] || {};
-          sr[row.mode][row.word] = { l: row.l, due: row.due, iv: row.iv };
-          if (row.updated_at) studyDates.add(localDateStr(row.updated_at));
+    // PostgREST 单次查询默认最多返回 1000 行，学过 1000+ 词会被静默截断导致统计偏低；
+    // 用 range 分页循环拉取全部行（每页 1000）
+    var PAGE = 1000;
+    var acc = [];
+    function page(from) {
+      return sb.from('sr_progress').select('mode,word,l,due,iv,updated_at').eq('user_id', user.id)
+        .range(from, from + PAGE - 1)
+        .then(function (r) {
+          if (r.error) throw r.error;
+          var rows = r.data || [];
+          for (var i = 0; i < rows.length; i++) acc.push(rows[i]);
+          if (rows.length < PAGE) {
+            var sr = {};
+            acc.forEach(function (row) {
+              sr[row.mode] = sr[row.mode] || {};
+              sr[row.mode][row.word] = { l: row.l, due: row.due, iv: row.iv };
+              if (row.updated_at) studyDates.add(localDateStr(row.updated_at));
+            });
+            return sr;
+          }
+          return page(from + PAGE);   // 还有更多，继续翻页
         });
-        return sr;
-      });
+    }
+    return page(0);
   }
   // 把数据库行映射为前端 tricks 对象（含可选的 flag / h 历史字段）
   function mapTricks(rows) {
@@ -524,15 +537,27 @@
 
     return upsertP.then(function (r) {
       if (r && r.error) throw r.error;
-      return sb.from('sr_progress').select('mode,word').eq('user_id', user.id);
-    }).then(function (r) {
-      if (r.error) throw r.error;
-      var have = {};
-      present.forEach(function (p) { have[p.mode + '\u0000' + p.word] = true; });
-      var toDel = (r.data || []).filter(function (row) { return !have[row.mode + '\u0000' + row.word]; });
-      return deleteRows('sr_progress', toDel, function (row) {
-        return sb.from('sr_progress').delete().eq('user_id', user.id).eq('mode', row.mode).eq('word', row.word);
-      });
+      // 分页拉取云端全量 (mode,word) 用于对比删除；PostgREST 默认上限 1000，需翻页
+      var PAGE = 1000, acc = [];
+      function page(from) {
+        return sb.from('sr_progress').select('mode,word').eq('user_id', user.id)
+          .range(from, from + PAGE - 1)
+          .then(function (r2) {
+            if (r2.error) throw r2.error;
+            var rows = r2.data || [];
+            for (var i = 0; i < rows.length; i++) acc.push(rows[i]);
+            if (rows.length < PAGE) {
+              var have = {};
+              present.forEach(function (p) { have[p.mode + '\u0000' + p.word] = true; });
+              var toDel = acc.filter(function (row) { return !have[row.mode + '\u0000' + row.word]; });
+              return deleteRows('sr_progress', toDel, function (row) {
+                return sb.from('sr_progress').delete().eq('user_id', user.id).eq('mode', row.mode).eq('word', row.word);
+              });
+            }
+            return page(from + PAGE);
+          });
+      }
+      return page(0);
     });
   }
 
