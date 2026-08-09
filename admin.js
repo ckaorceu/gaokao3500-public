@@ -439,6 +439,7 @@
   // 导入用户元数据 JSON：按 email/username 匹配现有账号，合并更新会员/管理员/封禁状态（不新建账号）
   function importUsersJSON(file) {
     const reader = new FileReader();
+    reader.onerror = function () { toast('文件读取失败', 'err'); };
     reader.onload = function () {
       let rows;
       try { rows = JSON.parse(reader.result); } catch (e) { toast('JSON 解析失败：' + e.message, 'err'); return; }
@@ -760,11 +761,12 @@
   function importTricksJSON(file) {
     if (!file) return;
     const reader = new FileReader();
+    reader.onerror = function () { toast('文件读取失败', 'err'); };
     reader.onload = function () {
       try {
         const data = JSON.parse(reader.result);
         const rows = Array.isArray(data) ? data : data.tricks;
-        if (!rows || !rows.length) { toast('文件中没有巧记数据', 'err'); return; }
+        if (!Array.isArray(rows) || !rows.length) { toast('文件中没有巧记数据', 'err'); return; }
         if (!confirm('将导入 ' + rows.length + ' 条巧记。\n合并策略：已存在（同用户同词）则更新字段，缺失则新增；导入为空的字段保留现有。\n确定继续？')) return;
         Sync.rpc('admin_import_tricks', { p_rows: rows }).then(function (r) {
           r = r || {};
@@ -787,6 +789,7 @@
   function importConfig(file) {
     if (!file) return;
     const reader = new FileReader();
+    reader.onerror = function () { toast('文件读取失败', 'err'); };
     reader.onload = function () {
       try {
         const data = JSON.parse(reader.result);

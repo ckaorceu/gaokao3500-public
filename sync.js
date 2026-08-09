@@ -420,22 +420,29 @@
   }
 
   // 拉取整库：登录后首次调用，返回 { sr, tricks }
+  var _loadAllPromise = null;   // 去重：onAuth 与外层各调一次，缓存 Promise 只拉一次云端
   function loadAll() {
-    if (!cloudEnabled()) {
-      var sr = localGet(SR_KEY), tricks = localGet(TRICK_KEY);
-      // 离线/本地模式：SR 不存学习时间戳，用 due/iv 反推 + 合并已持久化的打卡日期
-      rebuildStudyDates(sr);
-      return Promise.resolve({ sr: sr, tricks: tricks });
-    }
-    return Promise.all([fetchSR(), fetchTricks()]).then(function (res) {
-      var sr = res[0], tricks = res[1];
-      // 同时写本地缓存，便于登出后降级 / 离线兜底
-      localSet(SR_KEY, sr);
-      localSet(TRICK_KEY, tricks);
-      // 云端模式：fetchSR 已按 updated_at 填充 studyDates，这里持久化以便离线兜底
-      persistStudyDates();
-      return { sr: sr, tricks: tricks };
-    });
+    if (_loadAllPromise) return _loadAllPromise;
+    _loadAllPromise = (function () {
+      if (!cloudEnabled()) {
+        var sr = localGet(SR_KEY), tricks = localGet(TRICK_KEY);
+        // 离线/本地模式：SR 不存学习时间戳，用 due/iv 反推 + 合并已持久化的打卡日期
+        rebuildStudyDates(sr);
+        return Promise.resolve({ sr: sr, tricks: tricks });
+      }
+      return Promise.all([fetchSR(), fetchTricks()]).then(function (res) {
+        var sr = res[0], tricks = res[1];
+        // 同时写本地缓存，便于登出后降级 / 离线兜底
+        localSet(SR_KEY, sr);
+        localSet(TRICK_KEY, tricks);
+        // 云端模式：fetchSR 已按 updated_at 填充 studyDates，这里持久化以便离线兜底
+        persistStudyDates();
+        return { sr: sr, tricks: tricks };
+      });
+    })();
+    // 失败则清除缓存，允许下次重试（避免一次失败永久缓存 null）
+    _loadAllPromise = _loadAllPromise.catch(function (e) { _loadAllPromise = null; throw e; });
+    return _loadAllPromise;
   }
 
   function fetchSR() {
@@ -614,6 +621,9 @@
 
     return upsertP.then(function (r) {
       if (r && r.error) throw r.error;
+      // 本地优先阶段（_cloudMerged=false）只 upsert、不执行对比删除：此时本地 tricks 可能只是不完整的旧缓存，
+      // 若依其对比删除会把云端缺失的词全部删掉，造成巧记丢失。与 _saveSR 对称防护，云端全量合并成功后由消费方置 true。
+      if (!_cloudMerged) return;
       return sb.from('tricks').select('word').eq('user_id', user.id);
     }).then(function (r) {
       if (r.error) throw r.error;
