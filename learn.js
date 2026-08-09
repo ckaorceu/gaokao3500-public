@@ -911,52 +911,74 @@ function bindCardDelegation() {
     }
   });
 }
-let leBooted = false;
+let leReadyDone = false;
+function leBind() {
+  // CSP 兼容：内联 onclick 改为 JS 绑定（严格 CSP 下内联事件会被拦截），只绑定一次
+  var b;
+  if ((b = document.getElementById('curveBtn'))) b.onclick = showCurve;
+  if ((b = document.getElementById('trickEditBtn'))) b.onclick = openTrick;
+  if ((b = document.getElementById('trickHideToggle'))) {
+    b.checked = getTrickHide();
+    b.onchange = function (e) { setTrickHide(e.target.checked); };
+  }
+  if ((b = document.getElementById('trickAutoBtn'))) {
+    b.checked = getTrickAuto();
+    b.onchange = function (e) { setTrickAuto(e.target.checked); };
+  }
+  if ((b = document.getElementById('trickCancelBtn'))) b.onclick = closeTrick;
+  if ((b = document.getElementById('trickSaveBtn'))) b.onclick = saveTrick;
+  if ((b = document.getElementById('trickAiBtn'))) b.onclick = aiGenerateTrick;
+  if ((b = document.getElementById('trickReviewBtn'))) b.onclick = submitTrickReview;
+  if ((b = document.getElementById('curveCloseBtn'))) b.onclick = closeCurve;
+  var tf = document.getElementById('trickForm');
+  if (tf) tf.addEventListener('submit', function (e) { e.preventDefault(); });
+}
+// 本地优先合并：云端 SR 以 incoming 为主，但本地优先期间用户新评分（l 更高）覆盖云端旧值，避免竞态丢分
+function mergeSR(base, inc) {
+  var out = JSON.parse(JSON.stringify(inc || {}));
+  base = base || {};
+  for (var k in base) {
+    if (!base.hasOwnProperty(k)) continue;
+    for (var n in base[k]) {
+      if (!base[k].hasOwnProperty(n)) continue;
+      out[k] = out[k] || {};
+      var b = base[k][n], o = out[k][n];
+      if (!o || (b.l || 0) > (o.l || 0)) out[k][n] = b;
+    }
+  }
+  return out;
+}
+// 用给定 SR/tricks 渲染练习页；fromCloud=true 时先合并本地优先期间可能产生的未保存修改
+function leReady(srObj, tricksObj, fromCloud) {
+  if (!leReadyDone) {
+    leReadyDone = true;
+    leBind();
+    Sync.onStudy(renderStreak);
+  }
+  if (fromCloud) srObj = mergeSR(SR, srObj);
+  SR = srObj || {};
+  tricks = tricksObj || {};
+  invalidateLvlCache();   // SR 整体赋值，bestLevel 缓存失效
+  queue = buildQueue();
+  if (startName) {
+    const i = queue.findIndex(x => x.w.name === startName);
+    idx = i >= 0 ? i : 0;
+  }
+  renderStreak();
+  if (wrongOnly && !startName) { renderWrongList(); return; }
+  show();
+  renderAnnouncements();
+  // 卡片渲染后再校正一次（最新开关值已由文件末尾的 Sync.onFlags 订阅保证）
+  applyLearnGates();
+}
 function leBoot(d) {
-  if (leBooted) return;
-  leBooted = true;
-  // CSP 兼容：内联 onclick 改为 JS 绑定（严格 CSP 下内联事件会被拦截）
-  (function () {
-    var b;
-    if ((b = document.getElementById('curveBtn'))) b.onclick = showCurve;
-    if ((b = document.getElementById('trickEditBtn'))) b.onclick = openTrick;
-    if ((b = document.getElementById('trickHideToggle'))) {
-      b.checked = getTrickHide();
-      b.onchange = function (e) { setTrickHide(e.target.checked); };
-    }
-    if ((b = document.getElementById('trickAutoBtn'))) {
-      b.checked = getTrickAuto();
-      b.onchange = function (e) { setTrickAuto(e.target.checked); };
-    }
-    if ((b = document.getElementById('trickCancelBtn'))) b.onclick = closeTrick;
-    if ((b = document.getElementById('trickSaveBtn'))) b.onclick = saveTrick;
-    if ((b = document.getElementById('trickAiBtn'))) b.onclick = aiGenerateTrick;
-    if ((b = document.getElementById('trickReviewBtn'))) b.onclick = submitTrickReview;
-    if ((b = document.getElementById('curveCloseBtn'))) b.onclick = closeCurve;
-    var tf = document.getElementById('trickForm');
-    if (tf) tf.addEventListener('submit', function (e) { e.preventDefault(); });
-  })();
-  // 应用后台「内容管理」对词库的覆盖（影响展示与测验）
+  // 本地优先：若已有缓存，init 已先 leReady 显示第一个词；这里拉云端 overrides + 最新 SR 再刷新
   Sync.loadWordOverrides().then(function (ovr) {
     Sync.applyWordOverrides(ovr);
     return Sync.loadApprovedTricks();
   }).then(function (appr) {
     window.APPROVED_TRICKS = appr || {};
-    SR = d.sr || {};
-    invalidateLvlCache();   // SR 整体赋值，bestLevel 缓存失效
-    tricks = d.tricks || {};
-    queue = buildQueue();
-    if (startName) {
-      const i = queue.findIndex(x => x.w.name === startName);
-      idx = i >= 0 ? i : 0;
-    }
-    renderStreak();
-    Sync.onStudy(renderStreak);
-    renderAnnouncements();
-    if (wrongOnly && !startName) { renderWrongList(); return; }
-    show();
-    // 卡片渲染后再校正一次（最新开关值已由文件末尾的 Sync.onFlags 订阅保证）
-    applyLearnGates();
+    leReady(d.sr, d.tricks, true);   // 云端路径：合并本地修改后刷新
   }).catch(function (e) { console.error('学习页初始化失败', e); });
 }
 // 首屏防闪现：先用 localStorage 缓存的开关立即应用（不等登录态与 loadAll），
@@ -965,5 +987,12 @@ applyLearnGates();
   bindCardDelegation();
 if (typeof Sync.onFlags === 'function') Sync.onFlags(applyLearnGates);
 Sync.ensureFlags();
+// 本地优先：有缓存时立即用缓存秒出第一个词（基础释义），后台云端同步后由 leBoot 刷新
+try {
+  var _lp = Sync.peekLocal();
+  if (_lp && _lp.sr && Object.keys(_lp.sr).length) {
+    leReady(_lp.sr, _lp.tricks, false);
+  }
+} catch (e) {}
 Sync.onAuth(() => Sync.loadAll().then(leBoot).catch(e => { console.error(e); toast('学习页加载失败，请刷新重试'); }));
 Sync.loadAll().then(leBoot).catch(e => { console.error(e); toast('学习页加载失败，请刷新重试'); });

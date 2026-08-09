@@ -633,5 +633,13 @@ function boot(d) {
 applyFeatureGates();
 if (typeof Sync.onFlags === 'function') Sync.onFlags(applyFeatureGates);
 Sync.ensureFlags();
+// 本地优先：有缓存时立即用缓存秒渲染练习选项 + 总进度，不阻塞云端同步（云端回来后 boot 会刷新）
+try {
+  var _lp = Sync.peekLocal();
+  if (_lp && _lp.sr && Object.keys(_lp.sr).length) {
+    SR = _lp.sr; tricks = _lp.tricks; invalidateSrCache();
+    renderModePicker(); renderStats();
+  }
+} catch (e) {}
 Sync.onAuth(() => Sync.loadAll().then(boot).catch(err => { console.error('[app] loadAll 失败', err); toast('数据加载失败，请检查网络后刷新'); }));
 Sync.loadAll().then(boot);

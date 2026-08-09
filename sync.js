@@ -1293,7 +1293,9 @@
     onStudy: onStudy, streak: computeStreak, jwt: function () { return accessToken; },
     fetchAnnouncements: fetchAnnouncements, refreshAnnouncements: refreshAnnouncements,
     // 后台「功能开关」读取接口（feature_flags 表，由后台「🎛️ 运营」管理）
-    flagOn: flagOn, ensureFlags: ensureFlags, onFlags: onFlags
+    flagOn: flagOn, ensureFlags: ensureFlags, onFlags: onFlags,
+    // 本地优先：返回 localStorage 缓存的 SR/tricks，供首屏/练习页在云端同步完成前秒填充渲染
+    peekLocal: function () { return { sr: localGet(SR_KEY), tricks: localGet(TRICK_KEY) }; }
   };
 
   if (document.readyState === 'loading') {
