@@ -394,6 +394,65 @@
     }).catch(function (e) { toast('导出失败：' + (e.message || e), 'err'); });
   }
 
+  // 导出全部用户元数据为 JSON（含会员/管理员/封禁状态）
+  function exportUsersJSON() {
+    const all = [];
+    function page(off) {
+      return Sync.rpc('admin_list_users', { p_limit: 1000, p_offset: off, p_search: '' }).then(function (rows) {
+        rows = rows || [];
+        for (let i = 0; i < rows.length; i++) all.push(rows[i]);
+        if (rows.length >= 1000) return page(off + 1000);
+        return all;
+      });
+    }
+    page(0).then(function (users) {
+      return Sync.rpc('admin_list_banned', { p_limit: 1000 }).then(function (banned) {
+        const bmap = {};
+        (banned || []).forEach(function (b) { if (b.user_id) bmap[b.user_id] = true; });
+        const data = users.map(function (u) {
+          return {
+            email: u.email || '',
+            username: u.username || '',
+            is_member: !!u.is_member,
+            is_admin: !!u.is_admin,
+            banned: !!bmap[u.id],
+            created_at: u.created_at || null,
+            last_sign_in_at: u.last_sign_in_at || null
+          };
+        });
+        download('users_' + fmtDate(new Date()) + '.json', JSON.stringify(data, null, 2), 'application/json');
+        toast('已导出 ' + data.length + ' 个用户', 'ok');
+      });
+    }).catch(function (e) { toast('导出失败：' + (e.message || e), 'err'); });
+  }
+
+  // 导出含密码哈希（高敏感）：仅管理员，输出含 encrypted_password 的完整数组
+  function exportUsersJSONPwd() {
+    if (!confirm('⚠️ 导出的文件将包含全站用户的密码哈希（bcrypt）。\n该文件等同于凭证备份，一旦泄露弱密码可能被离线破解。\n请妥善保管、用完即删。确定导出？')) return;
+    Sync.rpc('admin_export_users', {}).then(function (rows) {
+      rows = rows || [];
+      download('users_with_password_' + fmtDate(new Date()) + '.json', JSON.stringify(rows, null, 2), 'application/json');
+      toast('已导出 ' + rows.length + ' 个用户（含密码哈希，请保密）', 'ok');
+    }).catch(function (e) { toast('导出失败：' + (e.message || e), 'err'); });
+  }
+
+  // 导入用户元数据 JSON：按 email/username 匹配现有账号，合并更新会员/管理员/封禁状态（不新建账号）
+  function importUsersJSON(file) {
+    const reader = new FileReader();
+    reader.onload = function () {
+      let rows;
+      try { rows = JSON.parse(reader.result); } catch (e) { toast('JSON 解析失败：' + e.message, 'err'); return; }
+      if (!Array.isArray(rows)) { toast('格式错误：应为用户数组', 'err'); return; }
+      if (!confirm('将导入 ' + rows.length + ' 个用户的元数据（会员/管理员/封禁），按邮箱或用户名匹配现有账号并合并更新，不新建账号。确定继续？')) return;
+      Sync.rpc('admin_import_users', { p_rows: rows }).then(function (res) {
+        res = res || {};
+        toast('导入完成：匹配 ' + (res.matched || 0) + ' 人，更新 ' + (res.updated || 0) + ' 人', 'ok');
+        loadUsers(); loadBanList();
+      }).catch(function (e) { toast('导入失败：' + (e.message || e), 'err'); });
+    };
+    reader.readAsText(file);
+  }
+
   // ---------- 内容管理 ----------
   function initContent() {
     const sb = $('#wordSearch');
@@ -685,6 +744,62 @@
       download('tricks_' + fmtDate(new Date()) + '.csv', '﻿' + lines.join('\n'), 'text/csv;charset=utf-8');
       toast('已导出 ' + rows.length + ' 条巧记', 'ok');
     }).catch(function (e) { toast('导出失败：' + (e.message || e), 'err'); });
+  }
+
+  // ---------- 巧记 / 配置 · 全站导入导出（管理员） ----------
+  function exportTricksJSON() {
+    Sync.rpc('admin_export_tricks').then(function (rows) {
+      rows = rows || [];
+      if (!rows.length) { toast('暂无可导出的巧记', 'err'); return; }
+      const data = { type: 'gaokao3500-tricks', version: 1, exported_at: new Date().toISOString(), count: rows.length, tricks: rows };
+      download('tricks_' + fmtDate(new Date()) + '.json', JSON.stringify(data, null, 2), 'application/json');
+      toast('已导出 ' + rows.length + ' 条巧记', 'ok');
+    }).catch(function (e) { toast('导出失败：' + (e.message || e), 'err'); });
+  }
+
+  function importTricksJSON(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function () {
+      try {
+        const data = JSON.parse(reader.result);
+        const rows = Array.isArray(data) ? data : data.tricks;
+        if (!rows || !rows.length) { toast('文件中没有巧记数据', 'err'); return; }
+        if (!confirm('将导入 ' + rows.length + ' 条巧记。\n合并策略：已存在（同用户同词）则更新字段，缺失则新增；导入为空的字段保留现有。\n确定继续？')) return;
+        Sync.rpc('admin_import_tricks', { p_rows: rows }).then(function (r) {
+          r = r || {};
+          toast('导入完成：成功 ' + (r.imported || 0) + ' 条，跳过(用户不存在) ' + (r.skipped || 0) + ' 条', 'ok');
+        }).catch(function (e) { toast('导入失败：' + (e.message || e), 'err'); });
+      } catch (err) { toast('JSON 解析失败：' + err.message, 'err'); }
+    };
+    reader.readAsText(file);
+  }
+
+  function exportConfig() {
+    Sync.rpc('admin_export_config').then(function (cfg) {
+      if (!cfg) { toast('暂无配置数据', 'err'); return; }
+      const data = { type: 'gaokao3500-config', version: 1, exported_at: new Date().toISOString(), config: cfg };
+      download('config_' + fmtDate(new Date()) + '.json', JSON.stringify(data, null, 2), 'application/json');
+      toast('已导出站点配置', 'ok');
+    }).catch(function (e) { toast('导出失败：' + (e.message || e), 'err'); });
+  }
+
+  function importConfig(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function () {
+      try {
+        const data = JSON.parse(reader.result);
+        const cfg = data.config || data;
+        if (!cfg || (!cfg.feature_flags && !cfg.announcements && !cfg.ai_config)) { toast('文件中没有配置数据', 'err'); return; }
+        if (!confirm('将导入站点配置。\n· 功能开关 / AI 设置：合并（存在则更新）\n· 公告：全量替换（清空现有后写入导入的）\n· AI 密钥若为占位符则保留现有密钥\n确定继续？')) return;
+        Sync.rpc('admin_import_config', { p_cfg: cfg }).then(function () {
+          toast('配置导入完成', 'ok');
+          if (state.tab === 'ops' || state.tab === 'ai') { loadOps(); }
+        }).catch(function (e) { toast('导入失败：' + (e.message || e), 'err'); });
+      } catch (err) { toast('JSON 解析失败：' + err.message, 'err'); }
+    };
+    reader.readAsText(file);
   }
 
   // ---------- 巧记内容审核 ----------
@@ -1224,9 +1339,21 @@
     if (ec && !ec._bound) { ec._bound = true; ec.onclick = () => exportOverrides('csv'); }
     const ue = $('#userExport');
     if (ue && !ue._bound) { ue._bound = true; ue.onclick = exportUsers; }
+    const uej = $('#userExportJson');
+    if (uej && !uej._bound) { uej._bound = true; uej.onclick = exportUsersJSON; }
+    const uejp = $('#userExportJsonPwd');
+    if (uejp && !uejp._bound) { uejp._bound = true; uejp.onclick = exportUsersJSONPwd; }
+    const iuj = $('#impUsersJson');
+    if (iuj && !iuj._bound) { iuj._bound = true; iuj.onchange = function () { if (iuj.files[0]) importUsersJSON(iuj.files[0]); iuj.value = ''; }; }
     const ep = $('#expProgress'), et = $('#expTricks');
     if (ep && !ep._bound) { ep._bound = true; ep.onclick = exportProgress; }
     if (et && !et._bound) { et._bound = true; et.onclick = exportTricks; }
+    const etj = $('#expTricksJson'), itj = $('#impTricksJson');
+    if (etj && !etj._bound) { etj._bound = true; etj.onclick = exportTricksJSON; }
+    if (itj && !itj._bound) { itj._bound = true; itj.onchange = function () { if (itj.files[0]) importTricksJSON(itj.files[0]); itj.value = ''; }; }
+    const ecfg = $('#expConfig'), icfg = $('#impConfig');
+    if (ecfg && !ecfg._bound) { ecfg._bound = true; ecfg.onclick = exportConfig; }
+    if (icfg && !icfg._bound) { icfg._bound = true; icfg.onchange = function () { if (icfg.files[0]) importConfig(icfg.files[0]); icfg.value = ''; }; }
     const tf = $('#trickFilter');
     if (tf && !tf._bound) { tf._bound = true; tf.onchange = function () { state.trickStatus = tf.value; resetTrickPage(); loadTricksMod(); }; }
     const ps = $('#trickPageSize');

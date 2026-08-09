@@ -76,6 +76,11 @@
               <option value="no_progress">未开始学习</option>
             </select>
             <button class="auth-btn" id="userExport">导出 CSV</button>
+            <button class="auth-btn" id="userExportJson">导出 JSON</button>
+            <button class="auth-btn" id="userExportJsonPwd">导出 JSON（含密码哈希）</button>
+            <span class="muted" style="color:#c0392b">⚠️ 含密码哈希，文件须保密、用完即删</span>
+            <label class="auth-btn primary" for="impUsersJson">导入 JSON</label>
+            <input id="impUsersJson" type="file" accept="application/json,.json" style="display:none">
           </div>
         </div>
         <div class="pager" style="margin-bottom:10px">
@@ -196,11 +201,23 @@
     <!-- 导出 -->
     <div id="tabExport" class="admin-tab-body" style="display:none">
       <div class="panel">
-        <h3>学习数据导出</h3>
-        <p class="muted">导出全站学习进度与用户巧记，用于备份与离线分析（自动分页，数据量大时请稍候）。</p>
+        <h3>📝 巧记 · 导入导出</h3>
+        <p class="muted">导出全站用户巧记为 JSON 备份；导入时按邮箱/用户名匹配用户，合并写入（已存在则更新字段，缺失则新增；导入为空的字段保留现有）。</p>
         <div class="filters">
           <button class="auth-btn" id="expProgress">导出学习进度 CSV</button>
           <button class="auth-btn" id="expTricks">导出巧记 CSV</button>
+          <button class="auth-btn" id="expTricksJson">导出巧记 JSON</button>
+          <label class="auth-btn primary" for="impTricksJson">导入巧记 JSON</label>
+          <input id="impTricksJson" type="file" accept=".json,application/json" hidden>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>⚙️ 站点配置 · 导入导出</h3>
+        <p class="muted">导出功能开关、公告、AI 配置为 JSON 备份。AI 密钥导出时脱敏为占位符；导入遇占位则保留现有密钥。导入将合并功能开关与 AI 设置，并全量替换公告。</p>
+        <div class="filters">
+          <button class="auth-btn" id="expConfig">导出配置 JSON</button>
+          <label class="auth-btn primary" for="impConfig">导入配置 JSON</label>
+          <input id="impConfig" type="file" accept=".json,application/json" hidden>
         </div>
       </div>
     </div>
@@ -323,6 +340,6 @@
 <script defer src="common.js?v=2" charset="utf-8"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script defer src="sync.js?v=38" charset="utf-8"></script>
-<script defer src="admin.js?v=21" charset="utf-8"></script></script>
+<script defer src="admin.js?v=24" charset="utf-8"></script></script>
 </body>
 </html>
