@@ -700,7 +700,8 @@ function rate(targetLv) {
   applyAutoHard(w.name, resLv);      // 未掌握词自动标记为重难词（仅标记功能开启时生效）
   Sync.saveTricksNow(tricks);
   // 重复记忆：评 不会(L1)/模糊(L2) 且未达上限 -> 本轮稍后重练该词
-  if (repeatOn && (newLv === 0 || newLv === 1) && (repeatCount[w.name] || 0) < REPEAT_LIMIT) {
+  // 注：当前词位于队列末尾(idx === len-1)时不重复 push，避免「同一词连续出现两次」的观感；下轮 buildQueue 会按掌握度优先重练
+  if (repeatOn && (newLv === 0 || newLv === 1) && (repeatCount[w.name] || 0) < REPEAT_LIMIT && idx < queue.length - 1) {
     repeatCount[w.name] = (repeatCount[w.name] || 0) + 1;
     queue.push({ w, lv: newLv });
   }

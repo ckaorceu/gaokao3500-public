@@ -34,9 +34,10 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.ico" sizes="16x16 32x32 48x48 64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=44">
+<link rel="stylesheet" href="style.css?v=45">
 <!-- 首屏防闪现：必须同步执行（勿加 defer/async），在渲染前用缓存隐藏后台已关闭的模块 -->
 <script src="flags-boot.js?v=2" charset="utf-8"></script>
+<script src="theme.js"></script>
 </head>
 <body>
 <header class="topbar">
@@ -47,6 +48,7 @@
     <button type="button" data-accent="us">美</button>
     <button type="button" data-accent="uk">英</button>
   </div>
+  <button id="themeToggle" class="theme-toggle" type="button" title="切换夜间模式">🌙</button>
   <div id="auth-mount"></div>
 </header>
 
