@@ -412,8 +412,8 @@ function maybeAutoGenerateTrick() {
   if (!token) return; // 未登录不自动生成（AI 需鉴权）
   const t = tricks[w.name] || {};
   const hasUser = !!(t.assoc || t.root || t.homo || t.ex);
-  const hasOfficial = !!(window.WORD_OVR_TRICK && window.WORD_OVR_TRICK[w.name]);
-  const hasApproved = !!(window.APPROVED_TRICKS && window.APPROVED_TRICKS[w.name]);
+  const hasOfficial = !!(window.WORD_OVR_TRICK && window.WORD_OVR_TRICK[w.name.toLowerCase()]);
+  const hasApproved = !!(window.APPROVED_TRICKS && window.APPROVED_TRICKS[w.name.toLowerCase()]);
   if (hasUser || hasOfficial || hasApproved) return; // 已有巧记（含已通过的公开巧记）则不生成
   if (autoGenDone.has(w.name)) return;
   autoGenDone.add(w.name);
@@ -443,13 +443,13 @@ function renderTrick() {
   const t = tricks[w.name] || {};
   // 已通过的公开巧记（所有人可见，含访客）作兜底
   let assoc = t.assoc || '', root = t.root || '', homo = t.homo || '', ex = t.ex || '';
-  if ((!assoc || !root || !homo || !ex) && window.APPROVED_TRICKS && window.APPROVED_TRICKS[w.name]) {
-    const a = window.APPROVED_TRICKS[w.name];
+  if ((!assoc || !root || !homo || !ex) && window.APPROVED_TRICKS && window.APPROVED_TRICKS[w.name.toLowerCase()]) {
+    const a = window.APPROVED_TRICKS[w.name.toLowerCase()];
     assoc = assoc || a.assoc || ''; root = root || a.root || ''; homo = homo || a.homo || ''; ex = ex || a.ex || '';
   }
   // 后台「内容管理」设置的官方巧记作最终兜底
-  if ((!assoc || !root || !homo || !ex) && window.WORD_OVR_TRICK && window.WORD_OVR_TRICK[w.name]) {
-    const o = window.WORD_OVR_TRICK[w.name];
+  if ((!assoc || !root || !homo || !ex) && window.WORD_OVR_TRICK && window.WORD_OVR_TRICK[w.name.toLowerCase()]) {
+    const o = window.WORD_OVR_TRICK[w.name.toLowerCase()];
     assoc = assoc || o.assoc || ''; root = root || o.root || ''; homo = homo || o.homo || ''; ex = ex || o.ex || '';
   }
   const merged = { assoc: assoc, root: root, homo: homo, ex: ex };

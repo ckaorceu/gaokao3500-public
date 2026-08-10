@@ -1203,7 +1203,7 @@
       .then(function (r) {
         if (r.error) return {};
         var map = {};
-        (r.data || []).forEach(function (o) { map[o.word] = o; });
+        (r.data || []).forEach(function (o) { map[o.word] = o; map[(o.word || '').toLowerCase()] = o; });
         return map;
       });
   }
@@ -1247,16 +1247,36 @@
   function loadApprovedTricks() {
     if (!config()) return Promise.resolve({});
     if (!sb) return Promise.resolve({});
-    return sb.from('tricks_public')
-      .select('word,assoc,root,homo,ex')
-      .then(function (r) {
-        if (r.error) return {};
-        var map = {};
-        (r.data || []).forEach(function (o) {
-          map[o.word] = { assoc: o.assoc || '', root: o.root || '', homo: o.homo || '', ex: o.ex || '' };
+    // 分页拉取全部（tricks_public 可能超过 PostgREST 默认 1000 行上限）
+    var map = {};
+    function page(from) {
+      return sb.from('tricks_public')
+        .select('word,assoc,root,homo,ex')
+        .range(from, from + 999)
+        .then(function (r) {
+          if (r.error) return false;
+          (r.data || []).forEach(function (o) {
+            var v = { assoc: o.assoc || '', root: o.root || '', homo: o.homo || '', ex: o.ex || '' };
+            map[o.word] = v;
+            map[(o.word || '').toLowerCase()] = v; // 大小写兜底，避免 w.name 大小写不一致导致匹配失败
+          });
+          return (r.data || []).length === 1000; // 满页则继续
         });
-        return map;
-      });
+    }
+    return page(0).then(function (more) {
+      if (!more) return map;
+      var from = 1000, chain = Promise.resolve(true);
+      while (more && from < 10000) {
+        (function (f) {
+          chain = chain.then(function (m) {
+            if (!m) return false;
+            return page(f).then(function (mm) { more = mm; return mm; });
+          });
+        })(from);
+        from += 1000;
+      }
+      return chain.then(function () { return map; });
+    });
   }
 
   // 通用 RPC 调用（后台管理用，受 RLS + SECURITY DEFINER 守卫保护）
