@@ -498,6 +498,12 @@ function show() {
   applyLearnGates();
   trickRevealed = false;          // 新词：重置为「未揭示」
   applyTrickHiddenState();
+  // 防御：新词渲染后强制隐藏评分条与答案区，必须先「答题/选答案/显示释义」才出现，
+  // 避免某些模式下进入即显示评分按钮或提前泄露答案。
+  const _rw = document.getElementById('rateWrap');
+  if (_rw) _rw.style.display = 'none';
+  const _rw2 = document.getElementById('revealWord');
+  if (_rw2) _rw2.style.display = 'none';
   maybeAutoGenerateTrick();
 }
 
@@ -915,6 +921,7 @@ function bindCardDelegation() {
   });
 }
 let leReadyDone = false;
+let leReadyShownOnce = false;  // 是否已至少成功 show() 过一次卡片（用于控制云端刷新是否重建整卡）
 let leBooted = false;   // 防止 onAuth + 外层 loadAll 双触发导致 leBoot 重复执行（双拉云端 + 双 show）
 function leBind() {
   // CSP 兼容：内联 onclick 改为 JS 绑定（严格 CSP 下内联事件会被拦截），只绑定一次
@@ -986,14 +993,35 @@ function leReady(srObj, tricksObj, fromCloud) {
   SR = srObj || {};
   tricks = tricksObj || {};
   invalidateLvlCache();   // SR 整体赋值，bestLevel 缓存失效
+  // 锚定"当前正在看的词"：用刷新前的 idx 记下词名与位置，刷新后尽量停在同一词，
+  // 绝不盲目归零到队列第一个词（表现为"突然跳回 a"）。
+  const curName = (queue[idx] && queue[idx].w && queue[idx].w.name) || null;
+  const prevIdx = idx;
   queue = buildQueue();
-  if (startName) {
-    const i = queue.findIndex(x => x.w.name === startName);
-    idx = i >= 0 ? i : 0;
+  let newIdx = prevIdx;
+  if (curName) {
+    const i = queue.findIndex(x => x.w.name === curName);
+    if (i >= 0) newIdx = i;        // 词仍在队列：精确停在该词
+    // 词被过滤掉（如标记/开关变化）：保留 prevIdx，下面夹紧，不跳到 a
   }
+  if (newIdx >= queue.length) newIdx = Math.max(0, queue.length - 1);
+  if (newIdx < 0) newIdx = 0;
+  idx = newIdx;
+  // 已渲染过一次，且云端刷新前后"当前显示的词名"未变：只静默刷新巧记/开关，
+  // 绝不重建整张卡片（避免选择题选项被刷新重置、进度跳回）。
+  // 注意：比较的是"词名"而非"位置"，因为 mergeKeepDirty 后 SR 变化可能让同一词在新队列中位置改变，
+  // 若按位置比较会误判为"变了"而重建卡片、表现为跳词。
+  const afterName = (queue[idx] && queue[idx].w && queue[idx].w.name) || null;
+  const stayed = leReadyShownOnce && curName && afterName === curName;
   renderStreak();
   if (wrongOnly && !startName) { renderWrongList(); return; }
+  if (stayed) {
+    renderTrick();
+    applyLearnGates();
+    return;
+  }
   show();
+  leReadyShownOnce = true;
   renderAnnouncements();
   // 卡片渲染后再校正一次（最新开关值已由文件末尾的 Sync.onFlags 订阅保证）
   applyLearnGates();
@@ -1002,11 +1030,9 @@ function leBoot(d) {
   if (leBooted) return;   // 幂等：onAuth 与外层 loadAll 都会调用，已登录时只跑一次
   leBooted = true;
   // 本地优先：若已有缓存，init 已先 leReady 显示第一个词；这里拉云端 overrides + 最新 SR 再刷新
+  // 注：公开巧记(APPROVED_TRICKS)由页面末尾的并行预加载链独立拉取，不在此 await，避免分页慢拖累首屏/做题
   Sync.loadWordOverrides().then(function (ovr) {
     Sync.applyWordOverrides(ovr);
-    return Sync.loadApprovedTricks();
-  }).then(function (appr) {
-    window.APPROVED_TRICKS = appr || {};
     leReady(d.sr, d.tricks, true);   // 云端路径：合并本地修改后刷新
   }).catch(function (e) { console.error('学习页初始化失败', e); });
 }
@@ -1023,5 +1049,12 @@ try {
     leReady(_lp.sr, _lp.tricks, false);
   }
 } catch (e) {}
+// 公开巧记并行预加载：进页面即开始，与首屏/做题完全并行（不阻塞），回来后若已渲染则静默刷新巧记面板
+if (typeof Sync !== 'undefined' && Sync.loadApprovedTricks) {
+  Sync.loadApprovedTricks().then(function (appr) {
+    window.APPROVED_TRICKS = appr || {};
+    if (leReadyDone) renderTrick();
+  }).catch(function (e) { console.error('公开巧记加载失败', e); });
+}
 Sync.onAuth(() => Sync.loadAll().then(leBoot).catch(e => { console.error(e); toast('学习页加载失败，请刷新重试'); }));
 Sync.loadAll().then(leBoot).catch(e => { console.error(e); toast('学习页加载失败，请刷新重试'); });
