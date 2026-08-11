@@ -437,19 +437,44 @@ function maybeAutoGenerateTrick() {
   }).catch(function () {});
 }
 
+// 懒加载公开巧记缓存：仅按词请求，避免进页面全量拉取 tricks_public
+var _approvedTrickCache = {};
+var _approvedTrickPending = {};
+function fetchApprovedTrick(name) {
+  var key = (name || '').toLowerCase();
+  if (!key) return;
+  if (_approvedTrickCache[key] !== undefined) return;       // 已命中（含 null）
+  if (_approvedTrickPending[key]) return;                   // 已在请求中
+  _approvedTrickPending[key] = true;
+  if (typeof Sync !== 'undefined' && Sync.getApprovedTrick) {
+    Sync.getApprovedTrick(name).then(function (a) {
+      _approvedTrickCache[key] = a || null;
+      delete _approvedTrickPending[key];
+      if (leReadyDone && queue[idx] && queue[idx].w.name.toLowerCase() === key) renderTrick();
+    }).catch(function () { delete _approvedTrickPending[key]; });
+  } else {
+    _approvedTrickCache[key] = null;
+    delete _approvedTrickPending[key];
+  }
+}
+
 // 渲染巧记面板
 function renderTrick() {
   const { w } = queue[idx];
   const t = tricks[w.name] || {};
   // 已通过的公开巧记（所有人可见，含访客）作兜底
   let assoc = t.assoc || '', root = t.root || '', homo = t.homo || '', ex = t.ex || '';
-  if ((!assoc || !root || !homo || !ex) && window.APPROVED_TRICKS && window.APPROVED_TRICKS[w.name.toLowerCase()]) {
-    const a = window.APPROVED_TRICKS[w.name.toLowerCase()];
+  const _key = w.name.toLowerCase();
+  if ((!assoc || !root || !homo || !ex) && _approvedTrickCache[_key]) {
+    const a = _approvedTrickCache[_key];
     assoc = assoc || a.assoc || ''; root = root || a.root || ''; homo = homo || a.homo || ''; ex = ex || a.ex || '';
+  } else if ((!assoc || !root || !homo || !ex)) {
+    // 命中缓存的 null 或尚未加载：触发懒加载（不阻塞当前渲染，回来再刷新）
+    fetchApprovedTrick(w.name);
   }
   // 后台「内容管理」设置的官方巧记作最终兜底
-  if ((!assoc || !root || !homo || !ex) && window.WORD_OVR_TRICK && window.WORD_OVR_TRICK[w.name.toLowerCase()]) {
-    const o = window.WORD_OVR_TRICK[w.name.toLowerCase()];
+  if ((!assoc || !root || !homo || !ex) && window.WORD_OVR_TRICK && window.WORD_OVR_TRICK[_key]) {
+    const o = window.WORD_OVR_TRICK[_key];
     assoc = assoc || o.assoc || ''; root = root || o.root || ''; homo = homo || o.homo || ''; ex = ex || o.ex || '';
   }
   const merged = { assoc: assoc, root: root, homo: homo, ex: ex };
@@ -1049,12 +1074,7 @@ try {
     leReady(_lp.sr, _lp.tricks, false);
   }
 } catch (e) {}
-// 公开巧记并行预加载：进页面即开始，与首屏/做题完全并行（不阻塞），回来后若已渲染则静默刷新巧记面板
-if (typeof Sync !== 'undefined' && Sync.loadApprovedTricks) {
-  Sync.loadApprovedTricks().then(function (appr) {
-    window.APPROVED_TRICKS = appr || {};
-    if (leReadyDone) renderTrick();
-  }).catch(function (e) { console.error('公开巧记加载失败', e); });
-}
+// 公开巧记改为懒加载（见 renderTrick / fetchApprovedTrick）：进页面不再全量拉取 tricks_public，
+// 仅在渲染某个词的巧记面板且本地/个人巧记不足时，按词精确请求，首屏不再被海量公开巧记阻塞。
 Sync.onAuth(() => Sync.loadAll().then(leBoot).catch(e => { console.error(e); toast('学习页加载失败，请刷新重试'); }));
 Sync.loadAll().then(leBoot).catch(e => { console.error(e); toast('学习页加载失败，请刷新重试'); });

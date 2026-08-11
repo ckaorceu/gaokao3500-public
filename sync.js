@@ -1279,6 +1279,22 @@
     });
   }
 
+  // 懒加载：按单词精确查询一条已通过公开巧记（替代进页面全量拉取 tricks_public）。
+  // 返回 { word, assoc, root, homo, ex } 或 null。
+  function getApprovedTrick(word) {
+    if (!word) return Promise.resolve(null);
+    if (!config()) return Promise.resolve(null);
+    if (!sb) return Promise.resolve(null);
+    return sb.from('tricks_public')
+      .select('word,assoc,root,homo,ex')
+      .eq('word', word)
+      .maybeSingle()
+      .then(function (r) {
+        if (r.error) return null;
+        return r.data || null;
+      });
+  }
+
   // 通用 RPC 调用（后台管理用，受 RLS + SECURITY DEFINER 守卫保护）
   // 注意：Supabase 的 sb.rpc 返回 { data, error } 包装对象，
   // 这里统一解包为 data，出错时 reject（避免后台把包装对象当数组用导致 .reduce is not a function）。
@@ -1325,6 +1341,7 @@
     changePassword: changePassword, usernameAvailable: usernameAvailable, emailAvailable: emailAvailable,
     amIAdmin: amIAdmin, isMember: function () { return !!(user && user.isMember); }, loadWordOverrides: loadWordOverrides, listWordOverrides: listWordOverrides, applyWordOverrides: applyWordOverrides,
     loadApprovedTricks: loadApprovedTricks,
+    getApprovedTrick: getApprovedTrick,
     rpc: rpc, getWordOverride: getWordOverride, saveWordOverride: saveWordOverride, deleteWordOverride: deleteWordOverride,
     onStudy: onStudy, streak: computeStreak, jwt: function () { return accessToken; },
     fetchAnnouncements: fetchAnnouncements, refreshAnnouncements: refreshAnnouncements,
