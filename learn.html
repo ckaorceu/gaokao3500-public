@@ -13,7 +13,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.ico" sizes="16x16 32x32 48x48 64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=46">
+<link rel="stylesheet" href="style.css?v=47">
 <!-- 首屏防闪现：必须同步执行（勿加 defer/async），在渲染前用缓存隐藏后台已关闭的模块 -->
 <script src="flags-boot.js?v=2" charset="utf-8"></script>
 <script src="theme.js"></script>
@@ -40,10 +40,13 @@
     <span id="modeLabel" class="mode-label"></span>
     <span id="posIndicator"></span>
     <span id="learnStats"></span>
+  </div>
+  <div class="queue-bar">
+    <span class="queue-bar-label">抽题模式</span>
     <span class="queue-modes" role="group" aria-label="抽题模式">
-      <button class="qmode" type="button" data-mode="det" title="确定性顺序：重难→到期→未学→远期">顺序</button>
-      <button class="qmode" type="button" data-mode="smart" title="智能加权随机：弱词/到期优先">智能随机</button>
-      <button class="qmode" type="button" data-mode="rand" title="纯随机：全词库等概率洗牌，无逻辑">纯随机</button>
+      <button class="qmode" type="button" data-mode="det" title="确定性顺序：重难→到期→未学→远期"><span class="q-ico">📋</span>顺序</button>
+      <button class="qmode" type="button" data-mode="smart" title="智能加权随机：弱词/到期优先"><span class="q-ico">🎯</span>智能随机</button>
+      <button class="qmode" type="button" data-mode="rand" title="纯随机：全词库等概率洗牌，无逻辑"><span class="q-ico">🎲</span>纯随机</button>
     </span>
   </div>
 
