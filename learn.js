@@ -230,7 +230,7 @@ function initSmartToggle() {
   b.addEventListener('click', function () {
     cycleQueueMode();
     updateSmartToggle();
-    buildQueue(); idx = 0; show();
+    queue = buildQueue(); idx = 0; show();
     if (typeof toast === 'function') toast(queueMode === 'smart' ? '已开启智能加权随机抽题' : (queueMode === 'rand' ? '已切换为纯随机（无逻辑）' : '已切换为确定性顺序'));
   });
 }
