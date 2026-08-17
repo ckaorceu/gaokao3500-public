@@ -222,6 +222,9 @@
   }
   // 开关默认「开」（undefined 视为开），只有显式 false 才关
   function flagOn(key) { return !_flags || _flags[key] !== false; }
+  // 「默认关」类开关（如维护模式）：必须显式开启才生效，未加载/未设置均视为关
+  // —— 避免首屏 _flags 为空时 flagOn 默认返回 true 导致维护提示误闪且刷不掉
+  function flagExplicit(key) { return !!(_flags && _flags[key] === true); }
   // 全局是否应展示人机验证（受全局开关 + sitekey 真实性双重控制）
   function shouldShowCaptcha() { return cfKeyReal() && flagOn('security.captcha_enabled'); }
 
@@ -1346,7 +1349,7 @@
     onStudy: onStudy, streak: computeStreak, jwt: function () { return accessToken; },
     fetchAnnouncements: fetchAnnouncements, refreshAnnouncements: refreshAnnouncements,
     // 后台「功能开关」读取接口（feature_flags 表，由后台「🎛️ 运营」管理）
-    flagOn: flagOn, ensureFlags: ensureFlags, onFlags: onFlags,
+    flagOn: flagOn, flagExplicit: flagExplicit, ensureFlags: ensureFlags, onFlags: onFlags,
     // 本地优先：返回 localStorage 缓存的 SR/tricks，供首屏/练习页在云端同步完成前秒填充渲染
     peekLocal: function () { return { sr: localGet(SR_KEY), tricks: localGet(TRICK_KEY) }; },
     // 标记云端全量已与本地合并完成：此后 saveSR 才可执行"对比删除"，避免不完整缓存误删云端数据

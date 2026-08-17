@@ -291,10 +291,13 @@ function applyFeatureGates() {
   on('nav.streak_enabled') ? show($('#streak')) : hide($('#streak'));                  // 连续打卡徽章
   on('nav.wrongbook_enabled') ? show($('#wrongCard')) : hide($('#wrongCard'));         // 错词本入口
   on('learning.calendar_enabled') ? show($('#calendarCard')) : hide($('#calendarCard')); // 复习日历入口
-  // 维护模式：开启后顶部显示维护提示条
-  if (on('site.maintenance_mode')) {
+  // 维护模式：开启后顶部显示维护提示条（维护属「默认关」开关，须显式开启才显示，避免首屏误闪）
+  {
     const mb = document.getElementById('maintBar');
-    if (mb) mb.hidden = false;
+    if (mb) {
+      const onMaint = typeof Sync !== 'undefined' && Sync.flagExplicit && Sync.flagExplicit('site.maintenance_mode');
+      mb.hidden = !onMaint;
+    }
   }
   applyMarksVisibility();
   // 开关已落到各元素的行内 style 上，移除 flags-boot.js 注入的临时 !important 样式，

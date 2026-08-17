@@ -184,8 +184,8 @@ function getDue(name) { const r = srOf(name); return r.due || 0; }
 function modeLearned(m) { const mm = SR[m] || {}; let c = 0; for (const n in mm) if (mm[n].l > 0) c++; return c; }
 function modeDue(m) { const now = Date.now(); const mm = SR[m] || {}; let c = 0; for (const n in mm) if (mm[n].due <= now) c++; return c; }
 
-// 复习队列：待复习(到点)优先，其次未学，最后远期；乱序则打乱
-function buildQueue() {
+// 基础过滤：范围 + 各类 drill 筛选 + 「太简单退役」；智能队列与确定性队列共用，保证筛选口径一致
+function filterBase() {
   const baseWords = (isNaN(rangeFrom) && isNaN(rangeTo)) ? WORDS
     : WORDS.slice(isNaN(rangeFrom) ? 0 : rangeFrom, isNaN(rangeTo) ? WORDS.length : rangeTo);
   let arr = baseWords.map(w => ({ w, lv: srOf(w.name).l || 0 }));
@@ -196,6 +196,52 @@ function buildQueue() {
     else if (masteredOnly) arr = arr.filter(x => isMastered(x.w.name));
     else arr = arr.filter(x => !isEasy(x.w.name));   // 太简单：整体退役，不再出现
   }
+  return arr;
+}
+// 弱词：选错过(L1/L2)或被标「重难词」；连续答对升级(L3+)后 bestLevel 自然脱离，权重自动回落
+function isWeakWord(name) {
+  const b = bestLevel(name);
+  return (b >= 1 && b <= 2) || isHard(name);
+}
+// 是否启用「智能加权随机」队列：受 feature flag learning.smart_queue 控制（默认开）；
+// weak/wrong/easy/mastered 等 drill 筛选模式下退化为确定性队列，保证精确筛选
+function useSmartQueue() {
+  if (weakOnly || wrongOnly || easyOnly || masteredOnly) return false;
+  try {
+    if (window.Sync && typeof Sync.flagOn === 'function' && Sync.flagOn('learning.smart_queue') === false) return false;
+  } catch (e) {}
+  return true;
+}
+// 智能加权随机队列（详见 README）：
+//  - 到期复习优先（已学且到点）、其次新词、最后已掌握（巩固）
+//  - 弱词（选错过/重难）权重 ×N 强制插队，直到连续答对升级才回落
+//  - 算法 key = random()^(1/weight) 升序 = 加权随机洗牌；设上限 cap 后对全量洗牌再截断，截断后各类占比≈权重比
+function buildSmartQueue() {
+  let arr = filterBase();
+  const now = Date.now();
+  const W_WEAK = 8, W_DUE = 5, W_NEW = 3, W_KNOWN = 1;   // 权重常量，可按需调整
+  arr = arr.map(x => {
+    const rec = srOf(x.w.name);
+    const l = rec.l || 0, due = rec.due || 0;
+    let base = (l === 0) ? W_NEW : (due <= now ? W_DUE : W_KNOWN);
+    const weak = isWeakWord(x.w.name);
+    const weight = weak ? base * W_WEAK : base;
+    return { w: x.w, lv: l, weak: weak, key: Math.pow(Math.random(), 1 / weight) };
+  });
+  arr.sort((a, b) => a.key - b.key);
+  // 一次练习池上限：0=不限制（全量加权洗牌，前面都是该复习的弱词）；可用 ?cap=N 或 localStorage gaokao3500.smartCap 覆盖
+  let cap = 50;
+  try {
+    const pc = parseInt(params.get('cap') || '', 10);
+    if (!isNaN(pc) && pc > 0) cap = pc;
+    else { const ls = parseInt(localStorage.getItem('gaokao3500.smartCap') || '', 10); if (!isNaN(ls) && ls > 0) cap = ls; }
+  } catch (e) {}
+  if (cap > 0 && cap < arr.length) arr.length = cap;
+  return arr;
+}
+// 确定性队列：待复习(到点)优先，其次未学，最后远期；乱序则打乱（drill 筛选/关闭智能队列时使用）
+function buildDeterministicQueue() {
+  const arr = filterBase();
   const now = Date.now();
   arr.sort((a, b) => {
     const ha = isHard(a.w.name) ? 0 : 1, hb = isHard(b.w.name) ? 0 : 1;
@@ -215,6 +261,10 @@ function buildQueue() {
     }
   }
   return arr;
+}
+// 队列构建入口：智能加权随机 / 确定性 二选一（所有原 buildQueue 调用点不变）
+function buildQueue() {
+  return useSmartQueue() ? buildSmartQueue() : buildDeterministicQueue();
 }
 
 // 错词本列表视图（drill=wrong 且无指定词 w 时进入，先列清单再选模式纠错）
@@ -549,10 +599,13 @@ function applyLearnGates() {
   if (wrongOnly) hide($('#trickPanel'));
   else on('content.tricks_enabled') ? show($('#trickPanel')) : hide($('#trickPanel'));
   on('learning.curve_enabled') ? show($('#curveBtn')) : hide($('#curveBtn'));
-  // 维护模式：开启后顶部显示维护提示条
-  if (on('site.maintenance_mode')) {
+  // 维护模式：开启后顶部显示维护提示条（维护属「默认关」开关，须显式开启才显示，避免首屏误闪）
+  {
     const mb = document.getElementById('maintBar');
-    if (mb) mb.hidden = false;
+    if (mb) {
+      const onMaint = typeof Sync !== 'undefined' && Sync.flagExplicit && Sync.flagExplicit('site.maintenance_mode');
+      mb.hidden = !onMaint;
+    }
   }
   // 开关已落到行内 style，移除 flags-boot.js 注入的临时 !important 样式（否则打开的模块显示不出来）
   if (typeof window.__flagsBootDone === 'function') window.__flagsBootDone();
