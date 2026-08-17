@@ -203,35 +203,41 @@ function isWeakWord(name) {
   const b = bestLevel(name);
   return (b >= 1 && b <= 2) || isHard(name);
 }
-// 「智能加权随机」开关：用户级偏好，localStorage 持久化；默认关（确定性顺序），
-// 由学习页「🎲 智能随机」按钮单独开启。weak/wrong/easy/mastered 等 drill 筛选模式强制确定性。
-const SMART_KEY = 'gaokao3500.smartQueue';
-let smartOn = false;
-try { smartOn = localStorage.getItem(SMART_KEY) === '1'; } catch (e) {}
-function setSmartPref(v) { smartOn = !!v; try { localStorage.setItem(SMART_KEY, smartOn ? '1' : '0'); } catch (e) {} }
+// 队列模式（三态，用户级偏好，localStorage 持久化）：
+//  'det'   = 确定性顺序（默认）：按 重难→到期→未学→远期 严格排序，无随机
+//  'smart' = 智能加权随机：聚焦复习池（到期/弱词/未学），加权随机 + cap
+//  'rand'  = 纯随机：从全词库等概率打乱，无任何权重/筛选逻辑
+const SMART_KEY = 'gaokao3500.queueMode';
+let queueMode = 'det';
+try { const m = localStorage.getItem(SMART_KEY); if (m === 'smart' || m === 'rand' || m === 'det') queueMode = m; } catch (e) {}
+function setQueueMode(v) { queueMode = v; try { localStorage.setItem(SMART_KEY, queueMode); } catch (e) {} }
+function cycleQueueMode() {
+  queueMode = queueMode === 'det' ? 'smart' : (queueMode === 'smart' ? 'rand' : 'det');
+  setQueueMode(queueMode);
+}
 function updateSmartToggle() {
   const b = document.getElementById('smartToggle');
   if (!b) return;
-  b.classList.toggle('on', smartOn);
-  b.setAttribute('aria-pressed', smartOn ? 'true' : 'false');
-  b.textContent = '🎲 智能随机' + (smartOn ? ' · 开' : '');
+  const on = queueMode !== 'det';
+  b.classList.toggle('on', on);
+  b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  b.textContent = queueMode === 'smart' ? '🎲 智能随机' : (queueMode === 'rand' ? '🎲 纯随机' : '🎲 顺序');
 }
 function initSmartToggle() {
   const b = document.getElementById('smartToggle');
   if (!b) return;
   updateSmartToggle();
   b.addEventListener('click', function () {
-    setSmartPref(!smartOn);
+    cycleQueueMode();
     updateSmartToggle();
     buildQueue(); idx = 0; show();
-    if (typeof toast === 'function') toast(smartOn ? '已开启智能加权随机抽题' : '已切换为确定性顺序');
+    if (typeof toast === 'function') toast(queueMode === 'smart' ? '已开启智能加权随机抽题' : (queueMode === 'rand' ? '已切换为纯随机（无逻辑）' : '已切换为确定性顺序'));
   });
 }
-// 是否启用「智能加权随机」队列：仅由页面开关控制（默认关）；
-// weak/wrong/easy/mastered 等 drill 筛选模式下退化为确定性队列，保证精确筛选
+// 是否启用「智能加权随机」队列：仅 smart 模式；drill 筛选模式强制确定性
 function useSmartQueue() {
   if (weakOnly || wrongOnly || easyOnly || masteredOnly) return false;
-  return smartOn;
+  return queueMode === 'smart';
 }
 // 智能加权随机队列（详见 README）：
 //  - 到期复习优先（已学且到点）、其次新词、最后已掌握（巩固）
@@ -291,9 +297,21 @@ function buildDeterministicQueue() {
   }
   return arr;
 }
-// 队列构建入口：智能加权随机 / 确定性 二选一（所有原 buildQueue 调用点不变）
+// 纯随机队列：从全词库等概率打乱，无任何权重/筛选逻辑（区别于智能随机的复习池聚焦）
+function buildPureRandomQueue() {
+  const arr = filterBase().slice();
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+// 队列构建入口：确定性 / 智能加权随机 / 纯随机 三选一
 function buildQueue() {
-  return useSmartQueue() ? buildSmartQueue() : buildDeterministicQueue();
+  if (weakOnly || wrongOnly || easyOnly || masteredOnly) return buildDeterministicQueue();
+  if (queueMode === 'smart') return buildSmartQueue();
+  if (queueMode === 'rand') return buildPureRandomQueue();
+  return buildDeterministicQueue();
 }
 
 // 错词本列表视图（drill=wrong 且无指定词 w 时进入，先列清单再选模式纠错）
