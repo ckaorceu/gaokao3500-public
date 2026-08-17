@@ -603,6 +603,7 @@ html, body {
   letter-spacing: .02em;
 }
 .queue-modes {
+  position: relative;
   display: inline-flex;
   gap: 4px;
   padding: 4px;
@@ -611,6 +612,8 @@ html, body {
   box-shadow: inset 0 1px 2px rgba(16, 24, 40, .07);
 }
 .qmode {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -629,12 +632,27 @@ html, body {
 .qmode .q-ico { font-size: 14px; line-height: 1; }
 .qmode:hover { color: var(--text); }
 .qmode:active { transform: scale(.96); }
-.qmode.on {
+.qmode.on { color: var(--accent); }
+:root[data-theme="dark"] .qmode.on { color: var(--accent-2); }
+/* 滑动高亮块：由 JS 测量当前选中项位置，平滑移动 + 描边光晕 */
+.qmode-thumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  z-index: 0;
+  border-radius: 999px;
   background: var(--surface);
-  color: var(--accent);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-sm), 0 0 0 2px rgba(47, 107, 255, .35), 0 4px 14px rgba(47, 107, 255, .30);
+  transition: transform .26s cubic-bezier(.4, 0, .2, 1), width .26s cubic-bezier(.4, 0, .2, 1), opacity .2s ease;
+  opacity: 0;
+  pointer-events: none;
 }
-:root[data-theme="dark"] .qmode.on { background: #243049; color: var(--accent-2); }
+.qmode-thumb.no-anim { transition: none !important; }
+:root[data-theme="dark"] .qmode-thumb {
+  background: #243049;
+  box-shadow: var(--shadow-sm), 0 0 0 2px rgba(91, 140, 255, .45), 0 4px 16px rgba(91, 140, 255, .35);
+}
 
 /* 模式切换 */
 .mode-tabs {

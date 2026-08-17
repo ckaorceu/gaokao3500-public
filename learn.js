@@ -217,6 +217,25 @@ function updateSmartToggle() {
     el.classList.toggle('on', on);
     el.setAttribute('aria-pressed', on ? 'true' : 'false');
   });
+  moveThumb();
+}
+// 将高亮滑块（.qmode-thumb）平滑移动到当前选中的模式按钮下
+let _thumbMoved = false;
+function moveThumb() {
+  const group = document.querySelector('.queue-modes');
+  if (!group) return;
+  let thumb = group.querySelector('.qmode-thumb');
+  if (!thumb) { thumb = document.createElement('span'); thumb.className = 'qmode-thumb'; group.appendChild(thumb); }
+  const active = group.querySelector('.qmode.on');
+  if (!active) { thumb.style.opacity = '0'; return; }
+  if (!_thumbMoved) thumb.classList.add('no-anim');   // 首次定位不播动画，避免从左上角滑入
+  thumb.style.opacity = '1';
+  thumb.style.width = active.offsetWidth + 'px';
+  thumb.style.transform = 'translateX(' + active.offsetLeft + 'px)';
+  if (!_thumbMoved) {
+    _thumbMoved = true;
+    requestAnimationFrame(function () { requestAnimationFrame(function () { thumb.classList.remove('no-anim'); }); });
+  }
 }
 function initSmartToggle() {
   const btns = document.querySelectorAll('.qmode');
@@ -1167,6 +1186,9 @@ function leBoot(d) {
 applyLearnGates();
   bindCardDelegation();
   initSmartToggle();
+  // 字体加载/窗口尺寸变化后重算高亮滑块位置
+  window.addEventListener('resize', moveThumb);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(moveThumb);
 if (typeof Sync.onFlags === 'function') Sync.onFlags(applyLearnGates);
 Sync.ensureFlags();
 // 本地优先：有缓存时立即用缓存秒出第一个词（基础释义），后台云端同步后由 leBoot 刷新
