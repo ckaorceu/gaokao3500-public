@@ -211,27 +211,26 @@ const SMART_KEY = 'gaokao3500.queueMode';
 let queueMode = 'det';
 try { const m = localStorage.getItem(SMART_KEY); if (m === 'smart' || m === 'rand' || m === 'det') queueMode = m; } catch (e) {}
 function setQueueMode(v) { queueMode = v; try { localStorage.setItem(SMART_KEY, queueMode); } catch (e) {} }
-function cycleQueueMode() {
-  queueMode = queueMode === 'det' ? 'smart' : (queueMode === 'smart' ? 'rand' : 'det');
-  setQueueMode(queueMode);
-}
 function updateSmartToggle() {
-  const b = document.getElementById('smartToggle');
-  if (!b) return;
-  const on = queueMode !== 'det';
-  b.classList.toggle('on', on);
-  b.setAttribute('aria-pressed', on ? 'true' : 'false');
-  b.textContent = queueMode === 'smart' ? '🎲 智能随机' : (queueMode === 'rand' ? '🎲 纯随机' : '🎲 顺序');
+  document.querySelectorAll('.qmode').forEach(function (el) {
+    const on = el.getAttribute('data-mode') === queueMode;
+    el.classList.toggle('on', on);
+    el.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
 }
 function initSmartToggle() {
-  const b = document.getElementById('smartToggle');
-  if (!b) return;
+  const btns = document.querySelectorAll('.qmode');
+  if (!btns.length) return;
   updateSmartToggle();
-  b.addEventListener('click', function () {
-    cycleQueueMode();
-    updateSmartToggle();
-    queue = buildQueue(); idx = 0; show();
-    if (typeof toast === 'function') toast(queueMode === 'smart' ? '已开启智能加权随机抽题' : (queueMode === 'rand' ? '已切换为纯随机（无逻辑）' : '已切换为确定性顺序'));
+  btns.forEach(function (b) {
+    b.addEventListener('click', function () {
+      const m = b.getAttribute('data-mode');
+      if (m === queueMode) return;
+      setQueueMode(m);
+      updateSmartToggle();
+      queue = buildQueue(); idx = 0; show();
+      if (typeof toast === 'function') toast(m === 'smart' ? '已开启智能加权随机抽题' : (m === 'rand' ? '已切换为纯随机（无逻辑）' : '已切换为确定性顺序'));
+    });
   });
 }
 // 是否启用「智能加权随机」队列：仅 smart 模式；drill 筛选模式强制确定性

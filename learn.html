@@ -40,7 +40,11 @@
     <span id="modeLabel" class="mode-label"></span>
     <span id="posIndicator"></span>
     <span id="learnStats"></span>
-    <button id="smartToggle" class="smart-toggle" type="button" title="点击切换：顺序 → 智能随机（弱词/到期优先）→ 纯随机（无逻辑）">🎲 顺序</button>
+    <span class="queue-modes" role="group" aria-label="抽题模式">
+      <button class="qmode" type="button" data-mode="det" title="确定性顺序：重难→到期→未学→远期">顺序</button>
+      <button class="qmode" type="button" data-mode="smart" title="智能加权随机：弱词/到期优先">智能随机</button>
+      <button class="qmode" type="button" data-mode="rand" title="纯随机：全词库等概率洗牌，无逻辑">纯随机</button>
+    </span>
   </div>
 
   <section id="wrongList" class="wrong-list" hidden></section>
@@ -94,6 +98,6 @@
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script defer src="srs-core.js" charset="utf-8"></script>
 <script defer src="sync.js?v=43" charset="utf-8"></script>
-<script defer src="learn.js?v=74" charset="utf-8"></script>
+<script defer src="learn.js?v=75" charset="utf-8"></script>
 </body>
 </html>

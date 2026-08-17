@@ -588,21 +588,29 @@ html, body {
   font-size: 13px;
   color: var(--muted);
 }
-.smart-toggle {
+.queue-modes {
   flex: 0 0 auto;
   margin-left: auto;
+  display: inline-flex;
+  gap: 4px;
+  padding: 2px;
   border: 1px solid var(--border);
   background: var(--surface);
+  border-radius: 999px;
+}
+.qmode {
+  border: none;
+  background: transparent;
   color: var(--muted);
   border-radius: 999px;
-  padding: 4px 12px;
+  padding: 3px 10px;
   font-size: 13px;
   font-family: inherit;
   cursor: pointer;
-  transition: background .15s, color .15s, border-color .15s;
+  transition: background .15s, color .15s;
 }
-.smart-toggle:hover { border-color: var(--accent); color: var(--text); }
-.smart-toggle.on { background: var(--accent-grad); color: #fff; border-color: transparent; }
+.qmode:hover { color: var(--text); }
+.qmode.on { background: var(--accent-grad); color: #fff; }
 
 /* 模式切换 */
 .mode-tabs {
