@@ -240,6 +240,14 @@ function useSmartQueue() {
 function buildSmartQueue() {
   let arr = filterBase();
   const now = Date.now();
+  // 智能模式聚焦「该复习的词」：到期/临近 + 弱词 + 未学；跳过已掌握且远期的词，
+  // 从而与普通模式（走全部词）形成【不同的词集】，而不只是同一批词换顺序。
+  const reviewPool = arr.filter(x => {
+    const r = srOf(x.w.name);
+    const l = r.l || 0, due = r.due || 0;
+    return l === 0 || due <= now || isWeakWord(x.w.name) || (r.iv > 0 && due - now < 3 * 86400000);
+  });
+  if (reviewPool.length) arr = reviewPool;
   const W_WEAK = 8, W_DUE = 5, W_NEW = 3, W_KNOWN = 1;   // 权重常量，可按需调整
   arr = arr.map(x => {
     const rec = srOf(x.w.name);
