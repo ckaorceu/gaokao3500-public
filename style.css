@@ -580,11 +580,29 @@ html, body {
 
 .learn-meta {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
+  gap: 6px 10px;
   margin-bottom: 12px;
   font-size: 13px;
   color: var(--muted);
 }
+.smart-toggle {
+  flex: 0 0 auto;
+  margin-left: auto;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.smart-toggle:hover { border-color: var(--accent); color: var(--text); }
+.smart-toggle.on { background: var(--accent-grad); color: #fff; border-color: transparent; }
 
 /* 模式切换 */
 .mode-tabs {

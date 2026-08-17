@@ -13,7 +13,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.ico" sizes="16x16 32x32 48x48 64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=45">
+<link rel="stylesheet" href="style.css?v=46">
 <!-- 首屏防闪现：必须同步执行（勿加 defer/async），在渲染前用缓存隐藏后台已关闭的模块 -->
 <script src="flags-boot.js?v=2" charset="utf-8"></script>
 <script src="theme.js"></script>
@@ -40,6 +40,7 @@
     <span id="modeLabel" class="mode-label"></span>
     <span id="posIndicator"></span>
     <span id="learnStats"></span>
+    <button id="smartToggle" class="smart-toggle" type="button" title="开启后按智能加权随机抽题（弱词/到期优先）；关闭则为确定性顺序">🎲 智能随机</button>
   </div>
 
   <section id="wrongList" class="wrong-list" hidden></section>
@@ -93,6 +94,6 @@
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script defer src="srs-core.js" charset="utf-8"></script>
 <script defer src="sync.js?v=43" charset="utf-8"></script>
-<script defer src="learn.js?v=70" charset="utf-8"></script>
+<script defer src="learn.js?v=71" charset="utf-8"></script>
 </body>
 </html>

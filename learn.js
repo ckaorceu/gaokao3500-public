@@ -203,14 +203,35 @@ function isWeakWord(name) {
   const b = bestLevel(name);
   return (b >= 1 && b <= 2) || isHard(name);
 }
-// 是否启用「智能加权随机」队列：受 feature flag learning.smart_queue 控制（默认开）；
+// 「智能加权随机」开关：用户级偏好，localStorage 持久化；默认关（确定性顺序），
+// 由学习页「🎲 智能随机」按钮单独开启。weak/wrong/easy/mastered 等 drill 筛选模式强制确定性。
+const SMART_KEY = 'gaokao3500.smartQueue';
+let smartOn = false;
+try { smartOn = localStorage.getItem(SMART_KEY) === '1'; } catch (e) {}
+function setSmartPref(v) { smartOn = !!v; try { localStorage.setItem(SMART_KEY, smartOn ? '1' : '0'); } catch (e) {} }
+function updateSmartToggle() {
+  const b = document.getElementById('smartToggle');
+  if (!b) return;
+  b.classList.toggle('on', smartOn);
+  b.setAttribute('aria-pressed', smartOn ? 'true' : 'false');
+  b.textContent = '🎲 智能随机' + (smartOn ? ' · 开' : '');
+}
+function initSmartToggle() {
+  const b = document.getElementById('smartToggle');
+  if (!b) return;
+  updateSmartToggle();
+  b.addEventListener('click', function () {
+    setSmartPref(!smartOn);
+    updateSmartToggle();
+    buildQueue(); idx = 0; show();
+    if (typeof toast === 'function') toast(smartOn ? '已开启智能加权随机抽题' : '已切换为确定性顺序');
+  });
+}
+// 是否启用「智能加权随机」队列：仅由页面开关控制（默认关）；
 // weak/wrong/easy/mastered 等 drill 筛选模式下退化为确定性队列，保证精确筛选
 function useSmartQueue() {
   if (weakOnly || wrongOnly || easyOnly || masteredOnly) return false;
-  try {
-    if (window.Sync && typeof Sync.flagOn === 'function' && Sync.flagOn('learning.smart_queue') === false) return false;
-  } catch (e) {}
-  return true;
+  return smartOn;
 }
 // 智能加权随机队列（详见 README）：
 //  - 到期复习优先（已学且到点）、其次新词、最后已掌握（巩固）
@@ -1075,7 +1096,9 @@ function leReady(srObj, tricksObj, fromCloud) {
   // 绝不盲目归零到队列第一个词（表现为"突然跳回 a"）。
   const curName = (queue[idx] && queue[idx].w && queue[idx].w.name) || null;
   const prevIdx = idx;
-  queue = buildQueue();
+  // 云端增量刷新且已渲染过卡片：不打乱当前队列与进度（否则智能随机每次重洗会导致做题中途跳题/换词）
+  const keepQueue = leReadyShownOnce && fromCloud;
+  if (!keepQueue) queue = buildQueue();
   let newIdx = prevIdx;
   if (curName) {
     const i = queue.findIndex(x => x.w.name === curName);
@@ -1118,6 +1141,7 @@ function leBoot(d) {
 // 网络结果回来后由 Sync.onFlags 校正。详见 flags-boot.js 的说明。
 applyLearnGates();
   bindCardDelegation();
+  initSmartToggle();
 if (typeof Sync.onFlags === 'function') Sync.onFlags(applyLearnGates);
 Sync.ensureFlags();
 // 本地优先：有缓存时立即用缓存秒出第一个词（基础释义），后台云端同步后由 leBoot 刷新
