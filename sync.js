@@ -206,19 +206,37 @@
   function emitFlags() {
     _flagCbs.forEach(function (cb) { try { cb(_flags); } catch (e) { console.error('[Sync] onFlags 回调异常：', e); } });
   }
+  var _flagsTries = 0, _flagRetry = null;
   function ensureFlags() {
     if (_flagsPromise) return _flagsPromise;
     if (!sb) { _flags = _flags || {}; _flagsPromise = Promise.resolve(_flags); return _flagsPromise; }
     _flagsPromise = sb.rpc('public_feature_flags').then(function (r) {
-      var next = {};
       var rows = (r && r.data) || r || [];
+      var next = {};
       rows.forEach(function (row) { next[row.key] = row.enabled; });
       _flags = next;
+      _flagsTries = 0;
       writeFlagsCache(next);
       emitFlags();
       return _flags;
-    }).catch(function () { _flags = _flags || {}; return _flags; });   // 失败时沿用本地缓存
+    }).catch(function () {
+      // 拉取失败（无痕窗口常被隐私扩展/严格跟踪防护/临时限流拦截对 supabase.co 的请求）：
+      // 不要一次性 fail-open 并永久 memoize，而是清空 promise 以便重试，安排退避重试 +
+      // 监听网络恢复。普通浏览器有 localStorage 缓存兜底，无痕窗口靠重试补拉成功。
+      _flagsPromise = null;
+      _flagsTries++;
+      if (_flagsTries <= 5) {
+        clearTimeout(_flagRetry);
+        _flagRetry = setTimeout(function () { _flagRetry = null; ensureFlags(); }, 1500 * _flagsTries);
+      }
+      _flags = _flags || {};
+      return _flags;
+    });
     return _flagsPromise;
+  }
+  // 网络恢复时（无痕窗口隐私扩展放行、弱网重连）补拉一次开关，让已关闭功能正确隐藏
+  if (typeof window !== 'undefined') {
+    window.addEventListener('online', function () { _flagsTries = 0; _flagsPromise = null; clearTimeout(_flagRetry); ensureFlags(); });
   }
   // 开关默认「开」（undefined 视为开），只有显式 false 才关
   function flagOn(key) { return !_flags || _flags[key] !== false; }
