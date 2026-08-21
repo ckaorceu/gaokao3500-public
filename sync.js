@@ -757,7 +757,7 @@
       if (ceBtn) ceBtn.onclick = showChangeEmail;
       var so = document.getElementById('authSignOut');
       if (so) so.onclick = function () {
-        signOut().catch(function (e) { alert('退出失败：' + (e && e.message ? e.message : e)); });
+        signOut().catch(function (e) { alert('退出失败：' + (authErrMsg(e) || e)); });
       };
     } else {
       mount.innerHTML = '<button class="auth-btn" id="authOpen">登录 / 注册</button>';
@@ -845,6 +845,33 @@
     if (ue) ue.focus();
   }
 
+  // 将 Supabase 等英文报错映射为中文，提升登录/注册/找回流程的可读性
+  function authErrMsg(e) {
+    var raw = '';
+    if (e) {
+      if (typeof e === 'string') raw = e;
+      else if (e.message) raw = e.message;
+      else if (e.error_description) raw = e.error_description;
+      else raw = String(e);
+    }
+    var m = raw.toLowerCase();
+    if (m.indexOf('invalid login credentials') !== -1) return '邮箱或密码不正确';
+    if (m.indexOf('email not confirmed') !== -1) return '邮箱尚未验证，请先查收验证邮件并点击激活';
+    if (m.indexOf('already registered') !== -1 || m.indexOf('already been registered') !== -1) return '该邮箱已注册，请直接登录';
+    if (m.indexOf('password should be at least') !== -1) return '密码长度至少 6 位';
+    if (m.indexOf('invalid email') !== -1 || m.indexOf('invalid format') !== -1) return '邮箱格式不正确';
+    if (m.indexOf('code is incorrect') !== -1 || m.indexOf('invalid otp') !== -1) return '验证码不正确';
+    if (m.indexOf('otp') !== -1 && m.indexOf('expired') !== -1) return '验证码已过期，请重新获取';
+    if (m.indexOf('token') !== -1 && (m.indexOf('expired') !== -1 || m.indexOf('invalid') !== -1)) return '验证码已过期或无效，请重新获取';
+    if (m.indexOf('rate limit') !== -1 || m.indexOf('too many requests') !== -1 || m.indexOf('for security purposes') !== -1) return '操作过于频繁，请稍后再试';
+    if (m.indexOf('user not found') !== -1 || m.indexOf('no user found') !== -1) return '账号不存在';
+    if (m.indexOf('signup is disabled') !== -1 || m.indexOf('signups not allowed') !== -1) return '当前已关闭注册';
+    if (m.indexOf('network') !== -1) return '网络异常，请检查网络后重试';
+    if (m.indexOf('email rate limit') !== -1) return '邮件发送过于频繁，请稍后再试';
+    if (raw) return raw;
+    return '操作失败';
+  }
+
   function doAuth() {
     var id = (document.getElementById('authId').value || '').trim();
     var pw = document.getElementById('authPw').value || '';
@@ -861,7 +888,7 @@
     }).catch(function (e) {
       cfReset('login');
       msg.className = 'auth-msg err';
-      msg.textContent = (e && e.message) ? e.message : '操作失败';
+      msg.textContent = authErrMsg(e) || '操作失败';
     });
   }
 
@@ -898,7 +925,7 @@
       showOtpStep(email);
     }).catch(function (e) {
       msg.className = 'auth-msg err';
-      msg.textContent = (e && e.message) ? e.message : '注册失败';
+      msg.textContent = authErrMsg(e) || '注册失败';
     });
   }
 
@@ -934,7 +961,7 @@
         }, 600);
       }).catch(function (e) {
         m.className = 'auth-msg err';
-        m.textContent = '验证失败：' + ((e && e.message) ? e.message : '验证码错误') +
+        m.textContent = '验证失败：' + (authErrMsg(e) || '验证码错误') +
           '。若邮件里是「激活链接」，请点击链接完成注册后到登录页登录。';
       });
     }
@@ -949,7 +976,7 @@
           m.className = 'auth-msg ok'; m.textContent = '已重新发送验证码';
           startResendCooldown(_resendBtn, 'signup', '重新发送');
         }).catch(function (e) {
-          m.className = 'auth-msg err'; m.textContent = (e && e.message) ? e.message : '发送失败';
+          m.className = 'auth-msg err'; m.textContent = authErrMsg(e) || '发送失败';
           clearResendCooldown(_resendBtn, '重新发送');
         });
     }
@@ -1009,7 +1036,7 @@
       showRecoveryCode(email);
     }).catch(function (e) {
       msg.className = 'auth-msg err';
-      msg.textContent = (e && e.message) ? e.message : '发送失败';
+      msg.textContent = authErrMsg(e) || '发送失败';
     });
   }
 
@@ -1040,7 +1067,7 @@
         cfReset('recovery');
         m.className = 'auth-msg ok'; m.textContent = '已重新发送';
         startResendCooldown(_recResendBtn, 'recovery', '重新发送');
-      }).catch(function (e) { m.className = 'auth-msg err'; m.textContent = (e && e.message) ? e.message : '发送失败'; clearResendCooldown(_recResendBtn, '重新发送'); });
+      }).catch(function (e) { m.className = 'auth-msg err'; m.textContent = authErrMsg(e) || '发送失败'; clearResendCooldown(_recResendBtn, '重新发送'); });
     }
     _recResendBtn.onclick = function () {
       var remain = resendBlocked('recovery');
@@ -1061,7 +1088,7 @@
       verifyOtpEmail(email, code, 'recovery').then(function () {
         showSetNewPw();
       }).catch(function (e) {
-        m.className = 'auth-msg err'; m.textContent = '验证失败：' + ((e && e.message) ? e.message : '验证码错误');
+        m.className = 'auth-msg err'; m.textContent = '验证失败：' + (authErrMsg(e) || '验证码错误');
       });
     };
     var ce = document.getElementById('authRecCode'); if (ce) ce.focus();
@@ -1088,7 +1115,7 @@
         if (r.error) throw r.error;
         m.className = 'auth-msg ok'; m.textContent = '密码已更新，请重新登录';
         setTimeout(closeModal, 1200);
-      }).catch(function (e) { m.className = 'auth-msg err'; m.textContent = '更新失败：' + ((e && e.message) ? e.message : e); });
+      }).catch(function (e) { m.className = 'auth-msg err'; m.textContent = '更新失败：' + (authErrMsg(e) || e); });
     };
     var ce = document.getElementById('authNew'); if (ce) ce.focus();
   }
@@ -1131,7 +1158,7 @@
       cfReset('email_change');
       msg.className = 'auth-msg ok'; msg.textContent = '确认码已发送至新邮箱，请查收完成确认。';
     }).catch(function (e) {
-      msg.className = 'auth-msg err'; msg.textContent = (e && e.message) ? e.message : '发送失败';
+      msg.className = 'auth-msg err'; msg.textContent = authErrMsg(e) || '发送失败';
     });
   }
 
@@ -1178,7 +1205,7 @@
     }).catch(function (e) {
       cfReset('changepw');
       msg.className = 'auth-msg err';
-      msg.textContent = (e && e.message) ? e.message : '修改失败';
+      msg.textContent = authErrMsg(e) || '修改失败';
     });
   }
 
