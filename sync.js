@@ -905,13 +905,15 @@
         setTimeout(closeModal, 600);
         return;
       }
-      // 开启邮箱验证：密码正确后，再向邮箱发送验证码作为登录第二步
+      // 开启邮箱验证：先发邮箱验证码；发送成功才丢弃密码会话，输入正确才真正登录（真正的第二步验证）
       msg.textContent = '正在发送邮箱验证码…';
       sb.auth.signInWithOtp({ email: email, options: { shouldCreateUser: false } }).then(function () {
+        return signOut();
+      }).then(function () {
         cfReset('login');
         showEmail2faStep(email);
       }).catch(function () {
-        // 验证码发送失败（如后台未开启 Email OTP）：降级为仅密码登录，避免锁死账号
+        // 验证码发送失败（如后台未开启 Email OTP）：保留密码会话，降级为仅密码登录，避免锁死账号
         console.warn('[2FA] 邮箱验证码发送失败，已降级为仅密码登录');
         cfReset('login');
         msg.className = 'auth-msg ok';
