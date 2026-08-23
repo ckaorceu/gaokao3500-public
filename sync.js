@@ -897,8 +897,9 @@
     msg.className = 'auth-msg'; msg.textContent = '处理中…';
     signIn(id, pw, isAdminBypass(id) ? '' : cfToken('login')).then(function (data) {
       var email = (data && data.user && data.user.email) || (currentUser() && currentUser().email) || '';
-      // 未开启邮箱验证：密码正确即登录完成
-      if (!flagOn('security.twofactor_enabled')) {
+      // 全局未开启，或该用户已自行关闭：密码正确即登录完成
+      var userMeta = (data.user && data.user.user_metadata) || {};
+      if (!flagOn('security.twofactor_enabled') || userMeta.email2fa === false) {
         cfReset('login');
         msg.className = 'auth-msg ok';
         msg.textContent = '成功，正在同步…';
@@ -1311,12 +1312,34 @@
         '<button class="auth-btn" id="setChPw">修改密码</button>' +
         '<button class="auth-btn" id="setChEmail">修改邮箱</button>' +
       '</div>';
+    html += '<hr class="set-hr">';
+    html += '<div class="set-row"><div>登录邮箱验证</div><label class="switch"><input type="checkbox" id="setEmail2fa"><span class="slider"></span></label></div>';
+    html += '<p class="set-note">开启后，每次登录除密码外还需输入邮箱收到的 6 位验证码；关闭则仅用密码登录。</p>';
     html += '<hr class="set-hr"><div class="set-2fa" id="set2fa"><div class="set-2fa-loading">邮箱验证状态加载中…</div></div>';
     html += '<div class="row"><button class="auth-btn" id="authCancel">关闭</button></div>';
     box(html);
     var cancel = document.getElementById('authCancel'); if (cancel) cancel.onclick = closeModal;
     var cp = document.getElementById('setChPw'); if (cp) cp.onclick = openChangePw;
     var ce = document.getElementById('setChEmail'); if (ce) ce.onclick = showChangeEmail;
+    var sw = document.getElementById('setEmail2fa');
+    if (sw) {
+      sb.auth.getUser().then(function (gr) {
+        var meta = (gr.data && gr.data.user && gr.data.user.user_metadata) || {};
+        sw.checked = (meta.email2fa !== false); // 默认开
+        sw.onchange = function () {
+          var v = sw.checked;
+          sw.disabled = true;
+          sb.auth.updateUser({ data: { email2fa: v } }).then(function () {
+            sw.disabled = false;
+            if (typeof toast === 'function') toast(v ? '已开启登录邮箱验证' : '已关闭登录邮箱验证');
+          }).catch(function (e) {
+            sw.disabled = false;
+            sw.checked = !v;
+            if (typeof toast === 'function') toast('设置失败：' + (authErrMsg(e) || '请重试'));
+          });
+        };
+      }).catch(function () {});
+    }
     renderEmailVerify();
   }
 
