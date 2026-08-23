@@ -657,6 +657,7 @@ function applyLearnGates() {
   const on = k => Sync.flagOn(k);
   const hide = el => { if (el) el.style.display = 'none'; };
   const show = el => { if (el) el.style.display = ''; };
+  // —— 与 flags-boot.js 的 MAP 对齐，确保无缓存 / 无痕窗口也能靠 JS 校正隐藏（不再只依赖缓存注入） ——
   on('content.ukus_enabled') ? show($('#accentToggle')) : hide($('#accentToggle'));
   if (!on('content.realvoice_enabled')) $$('.speak').forEach(b => { b.style.display = 'none'; });
   if (!on('content.examples_enabled')) $$('.ex').forEach(e => { e.style.display = 'none'; });
@@ -664,6 +665,15 @@ function applyLearnGates() {
   if (wrongOnly) hide($('#trickPanel'));
   else on('content.tricks_enabled') ? show($('#trickPanel')) : hide($('#trickPanel'));
   on('learning.curve_enabled') ? show($('#curveBtn')) : hide($('#curveBtn'));
+  // AI 巧记能力总开关：关闭后隐藏「AI 生成 / 自动生成」相关按钮（仅保留本地编辑）
+  if (!on('ai.tricks_enabled')) { hide($('#trickAiBtn')); hide($('#trickAutoBtn')); }
+  // 其余在首页/index 也受控、但学习页若存在对应元素也应随之隐藏的开关
+  on('nav.streak_enabled') ? show($('#streak')) : hide($('#streak'));
+  on('learning.quotes_enabled') ? show($('#quote')) : hide($('#quote'));
+  on('nav.bookunits_enabled') ? show($('#unitBlock')) : hide($('#unitBlock'));
+  on('nav.sort_enabled') ? (show($('#sortRow')), show($('#orderChips'))) : (hide($('#sortRow')), hide($('#orderChips')));
+  on('nav.wrongbook_enabled') ? show($('#wrongCard')) : hide($('#wrongCard'));
+  on('learning.calendar_enabled') ? show($('#calendarCard')) : hide($('#calendarCard'));
   // 维护模式：开启后顶部显示维护提示条（维护属「默认关」开关，须显式开启才显示，避免首屏误闪）
   {
     const mb = document.getElementById('maintBar');
@@ -672,6 +682,12 @@ function applyLearnGates() {
       mb.hidden = !onMaint;
     }
   }
+  // 重新渲染依赖开关的动态内容（标记工具条 / 巧记面板显隐），确保 flags 加载或切换后即时生效，
+  // 而不是停留在「开关未就绪时渲染的旧词」上（此前标记栏、AI 按钮等在无缓存时不会更新）。
+  try {
+    if (typeof queue !== 'undefined' && queue && typeof idx !== 'undefined' && queue[idx]) renderFlagBar(queue[idx].name);
+    applyTrickHiddenState();
+  } catch (e) { /* 渲染异常不影响静态门控 */ }
   // 开关已落到行内 style，移除 flags-boot.js 注入的临时 !important 样式（否则打开的模块显示不出来）
   if (typeof window.__flagsBootDone === 'function') window.__flagsBootDone();
 }
