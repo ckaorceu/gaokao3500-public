@@ -1392,6 +1392,20 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 .auth-btn.danger:hover { background: #ffe2e2; }
 .auth-btn.ghost { background: transparent; color: var(--muted); border-color: var(--border); }
 .auth-btn.ghost:hover { background: var(--surface); }
+/* 用户设置面板 */
+.set-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; font-size: 14px; }
+.set-k { color: var(--muted); }
+.set-actions { display: flex; gap: 8px; margin-top: 10px; }
+.set-actions .auth-btn { flex: 1; }
+.set-hr { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+.set-2fa { margin-top: 4px; }
+.set-2fa-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+.set-2fa-loading { color: var(--muted); font-size: 13px; padding: 8px 0; }
+.set-note { font-size: 13px; color: var(--muted); margin: 0 0 12px; line-height: 1.5; }
+.set-note.err { color: #dc2626; }
+.mfa-qr { display: flex; justify-content: center; background: #fff; border-radius: 10px; padding: 10px; margin: 4px 0 12px; }
+.mfa-qr svg { width: 180px; height: 180px; display: block; }
+.mfa-secret { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--surface); border: 1px dashed var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px; word-break: break-all; text-align: center; letter-spacing: .04em; margin-bottom: 12px; user-select: all; }
 #userFilter, #trickFilter { padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font: inherit; background: var(--bg); color: var(--text); }
 .ph-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .tb-inline { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; user-select: none; color: var(--text); }

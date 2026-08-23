@@ -767,12 +767,15 @@
       html +=
         '<button class="auth-btn" id="authChangePw">改密码</button>' +
         '<button class="auth-btn" id="authChangeEmail">改邮箱</button>' +
+        '<button class="auth-btn" id="authSettings">设置</button>' +
         '<button class="auth-btn" id="authSignOut">退出</button>';
       mount.innerHTML = html;
       var cp = document.getElementById('authChangePw');
       if (cp) cp.onclick = openChangePw;
       var ceBtn = document.getElementById('authChangeEmail');
       if (ceBtn) ceBtn.onclick = showChangeEmail;
+      var stBtn = document.getElementById('authSettings');
+      if (stBtn) stBtn.onclick = openSettings;
       var so = document.getElementById('authSignOut');
       if (so) so.onclick = function () {
         signOut().catch(function (e) { alert('退出失败：' + (authErrMsg(e) || e)); });
@@ -1227,6 +1230,124 @@
     });
   }
 
+  // ---------- 用户设置 + 两步验证（TOTP，依赖 Supabase 原生 MFA；全局开关 security.twofactor_enabled） ----------
+  function mfaList() { if (!sb) return Promise.reject(new Error('未连接服务')); return sb.auth.mfa.listFactors(); }
+  function mfaEnroll() { if (!sb) return Promise.reject(new Error('未连接服务')); return sb.auth.mfa.enroll({ factorType: 'totp' }); }
+  function mfaChallenge(fid) { if (!sb) return Promise.reject(new Error('未连接服务')); return sb.auth.mfa.challenge({ factorId: fid }); }
+  function mfaVerify(fid, code, cid) { if (!sb) return Promise.reject(new Error('未连接服务')); return sb.auth.mfa.verify({ factorId: fid, challengeId: cid, code: code }); }
+  function mfaUnenroll(fid) { if (!sb) return Promise.reject(new Error('未连接服务')); return sb.auth.mfa.unenroll({ factorId: fid }); }
+
+  function openSettings() {
+    closeModal();
+    var u = currentUser() || {};
+    var twoOn = (typeof Sync.flagOn === 'function') ? Sync.flagOn('security.twofactor_enabled') : false;
+    var html =
+      '<h3>用户设置</h3>' +
+      '<div class="set-row"><span class="set-k">用户名</span><b>' + escapeHtml(u.username || '—') + '</b></div>' +
+      '<div class="set-row"><span class="set-k">邮箱</span><b>' + escapeHtml(u.email || '—') + '</b></div>' +
+      '<div class="set-row"><span class="set-k">会员</span><b>' + (u.isMember ? '👑 会员' : '免费') + '</b></div>' +
+      '<div class="set-actions">' +
+        '<button class="auth-btn" id="setChPw">修改密码</button>' +
+        '<button class="auth-btn" id="setChEmail">修改邮箱</button>' +
+      '</div>';
+    if (twoOn) {
+      html += '<hr class="set-hr"><div class="set-2fa" id="set2fa"><div class="set-2fa-loading">两步验证状态加载中…</div></div>';
+    } else {
+      html += '<hr class="set-hr"><p class="set-note">两步验证当前未开放。</p>';
+    }
+    html += '<div class="row"><button class="auth-btn" id="authCancel">关闭</button></div>';
+    box(html);
+    var cancel = document.getElementById('authCancel'); if (cancel) cancel.onclick = closeModal;
+    var cp = document.getElementById('setChPw'); if (cp) cp.onclick = openChangePw;
+    var ce = document.getElementById('setChEmail'); if (ce) ce.onclick = showChangeEmail;
+    if (twoOn) render2fa();
+  }
+
+  function render2fa() {
+    var box2 = document.getElementById('set2fa');
+    if (!box2) return;
+    Sync.mfaList().then(function (r) {
+      if (r.error) throw r.error;
+      var factors = (r.data && r.data.all) || [];
+      var totp = factors.filter(function (f) { return f.type === 'totp' && f.status === 'verified'; });
+      if (totp.length) {
+        box2.innerHTML =
+          '<div class="set-2fa-title">🔐 两步验证已启用</div>' +
+          '<p class="set-note">登录时除密码外还需输入验证器中的 6 位动态码。</p>' +
+          '<button class="auth-btn danger" id="set2faOff">关闭两步验证</button>';
+        var off = document.getElementById('set2faOff');
+        if (off) off.onclick = function () { disable2fa(totp[0].id); };
+      } else {
+        box2.innerHTML =
+          '<div class="set-2fa-title">🔐 两步验证</div>' +
+          '<p class="set-note">为账号增加一层保护：绑定验证器（Google Authenticator / 1Password 等）后，登录需输入动态码。</p>' +
+          '<button class="auth-btn primary" id="set2faOn">启用两步验证</button>';
+        var on = document.getElementById('set2faOn');
+        if (on) on.onclick = enroll2fa;
+      }
+    }).catch(function (e) {
+      box2.innerHTML = '<div class="set-2fa-title">两步验证</div><p class="set-note err">' + (authErrMsg(e) || '加载失败') + '</p>';
+    });
+  }
+
+  function enroll2fa() {
+    var box2 = document.getElementById('set2fa');
+    if (box2) box2.innerHTML = '<div class="set-2fa-loading">正在生成密钥…</div>';
+    Sync.mfaEnroll().then(function (r) {
+      if (r.error) throw r.error;
+      var d = r.data || {};
+      var totp = d.totp || {};
+      var factorId = d.id;
+      box2.innerHTML =
+        '<div class="set-2fa-title">扫描二维码绑定</div>' +
+        '<div class="mfa-qr">' + (totp.qr_code || '') + '</div>' +
+        '<p class="set-note">用验证器 App 扫描上方二维码，或手动输入密钥：</p>' +
+        '<div class="mfa-secret" id="mfaSecret">' + escapeHtml(totp.secret || '') + '</div>' +
+        '<input id="mfaCode" type="text" inputmode="numeric" placeholder="输入 6 位动态码" maxlength="6" autocomplete="one-time-code">' +
+        '<div class="auth-msg" id="mfaMsg"></div>' +
+        '<div class="row">' +
+          '<button class="auth-btn primary" id="mfaVerifyBtn">验证并启用</button>' +
+          '<button class="auth-btn" id="mfaBack">返回</button>' +
+        '</div>';
+      var back = document.getElementById('mfaBack'); if (back) back.onclick = render2fa;
+      var vb = document.getElementById('mfaVerifyBtn'); if (vb) vb.onclick = function () { verify2fa(factorId); };
+      var code = document.getElementById('mfaCode'); if (code) code.focus();
+    }).catch(function (e) {
+      box2.innerHTML = '<div class="set-2fa-title">两步验证</div><p class="set-note err">' + (authErrMsg(e) || '生成失败') + '</p><button class="auth-btn" id="mfaBack2">返回</button>';
+      var b2 = document.getElementById('mfaBack2'); if (b2) b2.onclick = render2fa;
+    });
+  }
+
+  function verify2fa(factorId) {
+    var code = (document.getElementById('mfaCode').value || '').trim();
+    var msg = document.getElementById('mfaMsg');
+    if (!/^\d{6}$/.test(code)) { msg.className = 'auth-msg err'; msg.textContent = '请输入 6 位数字动态码'; return; }
+    msg.className = 'auth-msg'; msg.textContent = '验证中…';
+    Sync.mfaChallenge(factorId).then(function (r) {
+      if (r.error) throw r.error;
+      var cid = r.data && r.data.challengeId;
+      return Sync.mfaVerify(factorId, code, cid);
+    }).then(function (r) {
+      if (r.error) throw r.error;
+      if (typeof toast === 'function') toast('两步验证已启用');
+      render2fa();
+    }).catch(function (e) {
+      msg.className = 'auth-msg err'; msg.textContent = authErrMsg(e) || '验证失败，请重试';
+    });
+  }
+
+  function disable2fa(factorId) {
+    var box2 = document.getElementById('set2fa');
+    if (box2) box2.innerHTML = '<div class="set-2fa-loading">正在关闭…</div>';
+    Sync.mfaUnenroll(factorId).then(function (r) {
+      if (r.error) throw r.error;
+      if (typeof toast === 'function') toast('已关闭两步验证');
+      render2fa();
+    }).catch(function (e) {
+      if (box2) box2.innerHTML = '<div class="set-note err">' + (authErrMsg(e) || '关闭失败') + '</div>';
+    });
+  }
+
   // ---------- 公告 ----------
   // 拉取当前有效公告（active 且未过期）。每次实时请求不缓存：
   // 公告是低频内容，删除/停用后须即时生效（曾用 10 分钟缓存导致「删了还在」）。
@@ -1395,6 +1516,8 @@
     fetchAnnouncements: fetchAnnouncements, refreshAnnouncements: refreshAnnouncements,
     // 后台「功能开关」读取接口（feature_flags 表，由后台「🎛️ 运营」管理）
     flagOn: flagOn, flagExplicit: flagExplicit, ensureFlags: ensureFlags, onFlags: onFlags,
+    // 两步验证（TOTP，Supabase 原生 MFA）
+    mfaList: mfaList, mfaEnroll: mfaEnroll, mfaChallenge: mfaChallenge, mfaVerify: mfaVerify, mfaUnenroll: mfaUnenroll,
     // 本地优先：返回 localStorage 缓存的 SR/tricks，供首屏/练习页在云端同步完成前秒填充渲染
     peekLocal: function () { return { sr: localGet(SR_KEY), tricks: localGet(TRICK_KEY) }; },
     // 标记云端全量已与本地合并完成：此后 saveSR 才可执行"对比删除"，避免不完整缓存误删云端数据
