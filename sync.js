@@ -895,11 +895,29 @@
     if (pw.length < 6) { msg.className = 'auth-msg err'; msg.textContent = '密码至少 6 位'; return; }
     if (shouldShowCaptcha() && !isAdminBypass(id) && !cfToken('login')) { msg.className = 'auth-msg err'; msg.textContent = '请先完成人机验证'; return; }
     msg.className = 'auth-msg'; msg.textContent = '处理中…';
-    signIn(id, pw, isAdminBypass(id) ? '' : cfToken('login')).then(function () {
-      cfReset('login');
-      msg.className = 'auth-msg ok';
-      msg.textContent = '成功，正在同步…';
-      setTimeout(closeModal, 600);
+    signIn(id, pw, isAdminBypass(id) ? '' : cfToken('login')).then(function (data) {
+      var email = (data && data.user && data.user.email) || (currentUser() && currentUser().email) || '';
+      // 未开启邮箱验证：密码正确即登录完成
+      if (!flagOn('security.twofactor_enabled')) {
+        cfReset('login');
+        msg.className = 'auth-msg ok';
+        msg.textContent = '成功，正在同步…';
+        setTimeout(closeModal, 600);
+        return;
+      }
+      // 开启邮箱验证：密码正确后，再向邮箱发送验证码作为登录第二步
+      msg.textContent = '正在发送邮箱验证码…';
+      sb.auth.signInWithOtp({ email: email, options: { shouldCreateUser: false } }).then(function () {
+        cfReset('login');
+        showEmail2faStep(email);
+      }).catch(function () {
+        // 验证码发送失败（如后台未开启 Email OTP）：降级为仅密码登录，避免锁死账号
+        console.warn('[2FA] 邮箱验证码发送失败，已降级为仅密码登录');
+        cfReset('login');
+        msg.className = 'auth-msg ok';
+        msg.textContent = '成功，正在同步…';
+        setTimeout(closeModal, 600);
+      });
     }).catch(function (e) {
       cfReset('login');
       msg.className = 'auth-msg err';
@@ -1009,6 +1027,60 @@
       doResend();
     };
     startResendCooldown(_resendBtn, 'signup', '重新发送');   // 进入页面已发过一次码，立即起算冷却
+    var ce = document.getElementById('authCode'); if (ce) ce.focus();
+  }
+
+  // 登录第二步：密码正确后，向邮箱发送验证码，输入正确才视为登录完成
+  function showEmail2faStep(email) {
+    box(
+      '<h3>邮箱验证</h3>' +
+      '<p class="auth-hint">为保障账号安全，验证码已发送至 <b>' + escapeHtml(email) + '</b>（6 位数字），请输入以完成登录。</p>' +
+      '<input id="authCode" type="text" inputmode="numeric" maxlength="8" placeholder="输入 6 位验证码" autocomplete="one-time-code">' +
+      '<div class="auth-msg" id="authMsg"></div>' +
+      '<div class="row">' +
+        '<button class="auth-btn primary" id="authVerify">验证并登录</button>' +
+        '<button class="auth-btn" id="authResend">重新发送</button>' +
+      '</div>' +
+      '<div class="auth-forgot"><a href="#" id="authBackLogin">返回登录</a></div>'
+    );
+    var m = document.getElementById('authMsg');
+    var _key = 'email2fa';
+    function finish() {
+      if (Sync && Sync.loadAll) Sync.loadAll().catch(function () {});
+      closeModal();
+    }
+    function doVerify() {
+      var code = (document.getElementById('authCode').value || '').trim();
+      if (!code) { m.className = 'auth-msg err'; m.textContent = '请输入验证码'; return; }
+      m.className = 'auth-msg'; m.textContent = '验证中…';
+      sb.auth.verifyOtp({ email: email, token: code, type: 'email' }).then(function (r) {
+        if (r.error) throw r.error;
+        m.className = 'auth-msg ok'; m.textContent = '验证成功，正在登录…';
+        setTimeout(finish, 500);
+      }).catch(function (e) {
+        m.className = 'auth-msg err'; m.textContent = authErrMsg(e) || '验证码不正确';
+      });
+    }
+    document.getElementById('authVerify').onclick = doVerify;
+    document.getElementById('authCode').addEventListener('keydown', function (e) { if (e.key === 'Enter') doVerify(); });
+    document.getElementById('authBackLogin').onclick = function (e) { e.preventDefault(); signOut(); showLogin(); };
+    var _resendBtn = document.getElementById('authResend');
+    function doResend() {
+      sb.auth.signInWithOtp({ email: email, options: { shouldCreateUser: false } }).then(function (r) {
+        if (r.error) throw r.error;
+        m.className = 'auth-msg ok'; m.textContent = '已重新发送验证码';
+        startResendCooldown(_resendBtn, _key, '重新发送');
+      }).catch(function (e) {
+        m.className = 'auth-msg err'; m.textContent = authErrMsg(e) || '发送失败';
+        clearResendCooldown(_resendBtn, '重新发送');
+      });
+    }
+    _resendBtn.onclick = function () {
+      var remain = resendBlocked(_key);
+      if (remain > 0) { m.className = 'auth-msg'; m.textContent = remain + ' 秒后才可重新发送'; return; }
+      doResend();
+    };
+    startResendCooldown(_resendBtn, _key, '重新发送');
     var ce = document.getElementById('authCode'); if (ce) ce.focus();
   }
 
