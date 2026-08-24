@@ -648,3 +648,11 @@ try {
 } catch (e) {}
 Sync.onAuth(() => Sync.loadAll().then(boot).catch(err => { console.error('[app] loadAll 失败', err); toast('数据加载失败，请检查网络后刷新'); }));
 Sync.loadAll().then(boot);
+
+// 学习在 learn.html 单独页进行，回来/切回首页 tab 时需重算「待复习」等计数；
+// 否则数字会停在旧值（尤其浏览器"返回"从缓存 bfcache 恢复、或首页 tab 一直开着时）。
+function refreshCounts() { try { renderModePicker(); renderStats(); } catch (e) {} }
+if (typeof Sync.onStudy === 'function') Sync.onStudy(refreshCounts);
+document.addEventListener('visibilitychange', function () { if (!document.hidden) refreshCounts(); });
+window.addEventListener('focus', refreshCounts);
+window.addEventListener('pageshow', function (e) { if (e.persisted) refreshCounts(); });
