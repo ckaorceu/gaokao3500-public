@@ -4,12 +4,24 @@ const MODES = ['meaning', 'word', 'spelling', 'quizEn', 'quizCn'];
 
 const SR_KEY = 'gaokao3500.sr.v1';
 const TRICK_KEY = 'gaokao3500.tricks.v1';
+const SR_DIRTY_KEY = 'gaokao3500.srDirty.v1';   // 与 SR_KEY 同作用域（按浏览器），降级期间评过的词标记
 const DAY = 86400000;
 
 // 初始为空，数据在 Sync.loadAll() 完成后填充（见文件末尾 init）
 let SR = {};
 let tricks = {};
-let srDirty = {};   // 本地优先阶段用户实际改过的 SR 词（key=mode\u0000word），云端合并时保留本地值，防"评不会"被覆盖回退
+
+// 脏标记：本地优先（降级）阶段用户实际改过的 SR 词（key=mode\u0000word）。
+// 必须持久化到 localStorage：否则页面刷新/重开会话后丢失，恢复云端合并时这些词失去保护，
+// 会被云端旧的高等级覆盖，表现就是"评不会却被回退到之前的进度"。
+function loadSrDirty() {
+  try { return JSON.parse(localStorage.getItem(SR_DIRTY_KEY)) || {}; }
+  catch (e) { return {}; }
+}
+function persistSrDirty() {
+  try { localStorage.setItem(SR_DIRTY_KEY, JSON.stringify(srDirty)); } catch (e) {}
+}
+let srDirty = loadSrDirty();
 function saveSR() { Sync.saveSR(SR); }
 
 const params = new URLSearchParams(location.search);
@@ -855,6 +867,7 @@ function rate(targetLv) {
     SR[mode][w.name] = { l: newLv, due: now + iv * DAY, iv: iv };
   }
   srDirty[mode + '\u0000' + w.name] = true;   // 本地优先阶段用户改过的词，云端合并时保留本地（防"评不会"被覆盖回退）
+  persistSrDirty();                          // 持久化脏标记，跨会话/刷新不丢失
   saveSR();
   // 记录记忆历史（用于每词记忆曲线）：记得(r=1) / 遗忘(r=0)
   if (!tricks[w.name]) tricks[w.name] = {};
@@ -1148,6 +1161,7 @@ function leReady(srObj, tricksObj, fromCloud) {
     srObj = mergeKeepDirty(SR, srObj);   // 本地优先期间用户改过的词保留本地，避免"评不会"被云端覆盖回退
     if (window.Sync && typeof Sync.markCloudMerged === 'function') Sync.markCloudMerged();  // 标记云端已合并，允许后续 saveSR 对比删除
     srDirty = {};                        // 合并完成，清空脏标记
+    try { localStorage.removeItem(SR_DIRTY_KEY); } catch (e) {}  // 同步清除持久化副本
   }
   SR = srObj || {};
   tricks = tricksObj || {};
@@ -1158,7 +1172,13 @@ function leReady(srObj, tricksObj, fromCloud) {
   const prevIdx = idx;
   // 云端增量刷新且已渲染过卡片：不打乱当前队列与进度（否则智能随机每次重洗会导致做题中途跳题/换词）
   const keepQueue = leReadyShownOnce && fromCloud;
-  if (!keepQueue) queue = buildQueue();
+  if (!keepQueue) {
+    queue = buildQueue();
+    if (startName) {
+      const _si = queue.findIndex(x => x.w.name === startName);
+      if (_si >= 0) prevIdx = _si;   // ?w= 深链：首屏直接定位到指定词（错词本“纠错”应打开对应词，而非 queue[0]）
+    }
+  }
   let newIdx = prevIdx;
   if (curName) {
     const i = queue.findIndex(x => x.w.name === curName);

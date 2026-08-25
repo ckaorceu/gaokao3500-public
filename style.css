@@ -226,6 +226,9 @@ html, body {
 }
 .mode-chip .mc-name { font-size: 15px; font-weight: 600; color: var(--text); }
 .mode-chip.active .mc-name { color: var(--accent); }
+.mode-chip.has-due { border-color: #e0533d; box-shadow: var(--shadow-sm); }
+.mode-chip.has-due .mc-meta { color: #e0533d; }
+.mode-chip.has-due .mc-meta::before { content: '● '; }
 .mode-chip .mc-desc { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
 .mode-chip .mc-meta { font-size: 11px; color: var(--accent); margin-top: 6px; font-weight: 600; }
 .start-btn {

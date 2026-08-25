@@ -36,7 +36,16 @@ function bestLevel(name) {
 function modeLearned(mode) { const mm = SR[mode] || {}; let c = 0; for (const n in mm) if (mm[n].l > 0) c++; return c; }
 function modeDue(mode) { const now = Date.now(); const mm = SR[mode] || {}; let c = 0; for (const n in mm) if (mm[n].due <= now) c++; return c; }
 function totalLearned() { const s = new Set(); for (const k in SR) for (const n in SR[k]) if (SR[k][n].l > 0) s.add(n); return s.size; }
-function totalDue() { let c = 0; MODES.forEach(m => c += modeDue(m.id)); return c; }
+// 待复习：按“不同词”去重——只要某个词在任一模式到点就算 1 个（不再跨模式求和，避免同一词被重复计数）
+function totalDue() {
+  const set = new Set();
+  const now = Date.now();
+  MODES.forEach(m => {
+    const mm = SR[m.id] || {};
+    for (const n in mm) if (mm[n].due <= now) set.add(n);
+  });
+  return set.size;
+}
 
 // 英美音切换时重渲染词表音标
 window.onAccentChange = function () { try { if (typeof renderList === 'function') renderList(); } catch (e) {} };
@@ -89,7 +98,7 @@ function renderModePicker() {
   box.innerHTML = MODES.map(m => {
     const lc = modeLearned(m.id), dc = modeDue(m.id);
     const pct = ((lc / total) * 100).toFixed(lc > 0 && lc < total*0.01 ? 1 : 0);
-    return `<div class="mode-chip${m.id === selectedMode ? ' active' : ''}" data-mode="${m.id}">
+    return `<div class="mode-chip${m.id === selectedMode ? ' active' : ''}${dc > 0 ? ' has-due' : ''}" data-mode="${m.id}">
        <img class="mc-icon" src="${m.icon}" alt="">
        <div class="mc-name">${m.name}</div>
        <div class="mc-desc">${m.desc}</div>
@@ -141,6 +150,13 @@ function renderModePicker() {
     saveLearnCfg();
   });
   $('#startBtn').addEventListener('click', () => {
+    // 当前模式无待复习，但其它模式有 → 自动跳到待复习最多的模式，
+    // 否则会一直练“下次 N 天”的词，而首页“待复习合计”永远不动、也见不到「待复习」卡。
+    if (modeDue(selectedMode) === 0) {
+      let best = null, bestN = 0;
+      MODES.forEach(m => { const d = modeDue(m.id); if (d > bestN) { bestN = d; best = m.id; } });
+      if (best) { selectedMode = best; saveLearnCfg(); renderModePicker(); }
+    }
     const names = currentFilteredNames();
     const first = names[0];
     let base = `learn.html?mode=${selectedMode}`;
@@ -614,6 +630,7 @@ function boot(d) {
       if (uHead) uHead.setAttribute('aria-expanded', String(!coll));
     } catch (e) {}
     renderStats(); renderLetters(); renderList(); renderModePicker();
+    { const _dt = $('#dueTotal'); if (_dt) _dt.textContent = totalDue(); }
     renderStreak();
     renderUnitProgress(); renderQuote();
     // 列表/统计重渲染后再按开关校正一次（最新值已由文件末尾的 Sync.onFlags 订阅保证）
@@ -643,7 +660,7 @@ try {
   var _lp = Sync.peekLocal();
   if (_lp && _lp.sr && Object.keys(_lp.sr).length) {
     SR = _lp.sr; tricks = _lp.tricks || {}; invalidateSrCache();
-    renderModePicker(); renderStats();
+    renderModePicker(); renderStats(); const _dt = $('#dueTotal'); if (_dt) _dt.textContent = totalDue();
   }
 } catch (e) {}
 Sync.onAuth(() => Sync.loadAll().then(boot).catch(err => { console.error('[app] loadAll 失败', err); toast('数据加载失败，请检查网络后刷新'); }));
@@ -651,7 +668,12 @@ Sync.loadAll().then(boot);
 
 // 学习在 learn.html 单独页进行，回来/切回首页 tab 时需重算「待复习」等计数；
 // 否则数字会停在旧值（尤其浏览器"返回"从缓存 bfcache 恢复、或首页 tab 一直开着时）。
-function refreshCounts() { try { renderModePicker(); renderStats(); } catch (e) {} }
+function refreshCounts() {
+  // 从学习页返回首页时（浏览器常从 bfcache 恢复，不重跑 JS），首页内存里的 SR 仍是旧值，
+  // 必须先按最新 localStorage 重载 SR，再重算“待复习”等计数，否则数字停在旧值。
+  try { const lp = Sync.peekLocal(); if (lp && lp.sr) { SR = lp.sr; invalidateSrCache(); } } catch (e) {}
+  try { renderModePicker(); renderStats(); const _dt = $('#dueTotal'); if (_dt) _dt.textContent = totalDue(); } catch (e) {}
+}
 if (typeof Sync.onStudy === 'function') Sync.onStudy(refreshCounts);
 document.addEventListener('visibilitychange', function () { if (!document.hidden) refreshCounts(); });
 window.addEventListener('focus', refreshCounts);
